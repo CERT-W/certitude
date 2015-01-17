@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+
+{% block main %}
+<script>
+	function switchDisplay(id)
+	{
+		elt = document.getElementById(id)
+		
+		if (elt.style.display != 'block')
+			elt.style.display = 'block';
+		else
+			elt.style.display = 'none';
+	}
+</script>
+<h1 style="margin-top:50px;">CERTitude - Host results <small>[<a href="{{url_for('campaignresults')}}">Back</a>]</small></h1>
+
+Display the detailed results of scanned host {{ host }}.
+<br /><br />
+{% autoescape false %}
+{{ html_result }}
+{% endautoescape %}
+
+{% endblock %}
