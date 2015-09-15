@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+
+{% block main %}
+
+<h1 style="margin-top:50px;">CERTitude - New IOC</h1>
+
+{# <div style='width:600px;margin-top:20px;'> #}
+
+{% if errors %}
+<br/><pre class="error">{{ errors }}</pre>
+{% endif %}
+
+{# <div style='width:600px;margin-top:20px;'> #}
+<div style="margin-top:20px;">
+
+    <form enctype="multipart/form-data" action="{{url_for('xmliocAdd')}}" method="POST">
+        <table class="form_table">
+            <tr>
+                <td>Name :</td>
+                <td><input name="name" value="{{name}}"/></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td><input name="xml_content" type="file" /></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>
+                    <input type="submit" class="btn btn-primary" value="Add this IOC" />
+                </td>
+            </tr>
+        </table>
+    </form>
+
+</div>
+
+{% endblock%}
+

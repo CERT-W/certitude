@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+
+{% block main %}
+
+<h1 style="margin-top:50px;">CERTitude - New scan profile</h1>
+
+{% if errors %}
+<br/><pre class="error">{{ errors }}</pre>
+{% endif %}
+
+{# <div style='width:600px;margin-top:20px;'> #}
+<div style="margin-top:20px;">
+
+    <form action="{{url_for('profileAdd')}}" method="POST">
+        <table class="form_table">
+            <tr>
+                <td>Name :</td>
+                <td><input name="name" value="{{name}}"/></td>
+            </tr>
+            <tr>
+                <td>Host-confidential :</td>
+                <td><input name="host_confidential" type="checkbox" /></td>
+            </tr>
+            <tr>
+                <td>IOC List :</td>
+                <td>
+                    <select name="ioc_list" multiple>
+                    {% for ioc in xmliocs %}
+                        <option value="{{ioc.id}}">{{ioc.name}} [{{ioc.date_added}}]</option>
+                    {% endfor %}
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>
+                    <input type="submit" class="btn btn-primary" value="Add this profile" />
+                </td>
+            </tr>
+        </table>
+    </form>
+
+</div>
+
+{% endblock%}
+

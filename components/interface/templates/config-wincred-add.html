@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+
+{% block main %}
+
+<h1 style="margin-top:50px;">CERTitude - New Windows credential</h1>
+
+{# <div style='width:600px;margin-top:20px;'> #}
+
+{% if errors %}
+<br/><pre class="error">{{ errors }}</pre>
+{% endif %}
+
+<div style="margin-top:20px;">
+
+    <form action="{{url_for('wincredAdd')}}" method="POST">
+        <table class="form_table">
+            <tr>
+                <td>Domain :</td>
+                <td><input name="domain" value="{{domain}}"/></td>
+            </tr>
+            <tr>
+                <td>Account Login :</td>
+                <td><input name="login" value="{{login}}"/></td>
+            </tr>
+            <tr>
+                <td>Account Password :</td>
+                <td><input name="password" type="password" value="{{password}}"/></td>
+            </tr>
+            <tr>
+                <td>Your Password :</td>
+                <td><input name="user_password" type="password"/></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>
+                    <input type="submit" class="btn btn-primary" value="Add this credential" />
+                </td>
+            </tr>
+        </table>
+    </form>
+
+</div>
+
+{% endblock%}
+

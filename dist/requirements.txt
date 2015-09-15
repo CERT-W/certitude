@@ -1,0 +1,8 @@
+flask
+flask-login
+sqlalchemy
+netaddr
+dnspython
+pyasn1
+lxml
+impacket

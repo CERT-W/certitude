@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html class=" js flexbox canvas canvastext webgl no-touch geolocation postmessage websqldatabase indexeddb hashchange history draganddrop websockets rgba hsla multiplebgs backgroundsize borderimage borderradius boxshadow textshadow opacity cssanimations csscolumns cssgradients cssreflections csstransforms csstransforms3d csstransitions fontface generatedcontent video audio localstorage sessionstorage webworkers applicationcache svg inlinesvg smil svgclippaths"
+lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>CERTitude - The Seeker of IOC</title>
+    <meta name="description" content="">
+    <meta name="author" content="cert-solucom">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <!-- CSS concatenated and minified via ant build script-->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/reset.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- end CSS-->
+    <script src="{{ url_for('static', filename='js/vis_files/ga.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/vis_files/modernizr-2.0.6.min.js') }}"></script>
+    {% block custom_head %}
+    {% endblock %}
+</head>
+
+<body>
+  <div class='navbar navbar-inverse navbar-fixed-top'>
+    <div class="navbar-inner">
+      <div class="container">
+        <a class='brand' href="{{url_for('scan')}}">CERTitude</a>
+        <ul class='nav'>
+	  {% if not session.logged_in %}
+	  <li id='dataset-nav'><a href="{{url_for('login')}}">Log in</a></li>
+	  {% else %}
+		  <li id='dataset-nav'><a href="{{url_for('config')}}">Configuration &amp; Profiles</a></li>
+		  <li id='dataset-nav'><a href="{{url_for('scan')}}">Scanner</a></li>
+          <li id='dataset-nav'><a href="{{url_for('progress')}}">Progress</a></li>
+          <li id='dataset-nav'><a href="{{url_for('campaignvisualizations')}}">Visualizations</a></li>
+          <li id='dataset-nav'><a href="{{url_for('users')}}">Users</a></li>
+          <li id='dataset-nav'><a href="{{url_for('logout')}}">Logout</a></li>
+	  {% endif %}
+	</ul>
+      </div>
+    </div>
+  </div>
+  <div class="container-fluid main">
+
+    <div class='row-fluid'>
+
+      {% block main %}
+      {% endblock %}
+
+      {% block sidebar %}
+      {% endblock %}
+    </div>
+
+  </div> <!-- /container -->
+
+  <!-- Le javascript
+       ================================================== -->
+  <!-- Placed at the end of the document so the pages load faster -->
+
+</body>
+</html>

@@ -1,0 +1,44 @@
+{% extends "layout.html" %}
+
+{% block main %}
+
+<h1 style="margin-top:50px;">CERTitude - Scan planification: Add a new batch</h1>
+
+{% if errors %}
+<br/><pre class="error">{{ errors }}</pre>
+{% endif %}
+
+<form action="{{ url_for('scanbatchAdd') }}" method="POST">
+    <table style="margin-top:20px;">	
+        <tr>
+            <td>Name:</td>
+            <td><input name="name" placeholder="Batch name"/></td>
+        </tr>
+        <tr>
+            <td>Profile:</td>
+            <td>
+                <select name="profile">
+                {% for profile in configuration_profiles%}
+                    <option value="{{ profile.id }}">{{profile.name}}</option>
+                {% endfor %}
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <td>Credentials:</td>
+            <td>
+                <select name="credential">
+                {% for cred in windows_credentials%}
+                    <option value="{{ cred.id }}">{{cred.domain}}\{{cred.login}}</option>
+                {% endfor %}
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <td colspan=2 class="center"><input class="btn btn-primary" type="submit" value="Create batch" /></td>
+        </tr>
+    </table>
+</form>
+
+
+{% endblock%}

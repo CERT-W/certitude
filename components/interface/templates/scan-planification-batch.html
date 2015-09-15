@@ -1,0 +1,90 @@
+{% extends "layout.html" %}
+
+{% block main %}
+
+<h1 style="margin-top:50px;">CERTitude - Scan planification - {{ batch.name }}</h1>
+
+{% if errors %}
+<br/><pre class="error">{{ errors }}</pre>
+{% endif %}
+
+<form action="/api/scan/" method="GET" class="ajax form-scan">
+    <input type="hidden" name="batch" value="{{ batch.id }}" />
+    <table style="margin-top:20px;">	
+        <tr>
+            <td>
+                <table class="form_table">
+                    <tr>
+                        <td rowspan=3>Target:</td>
+                        <td><input name="ip" placeholder="IP / IP range"/></td>
+                    </tr>
+                     <tr>
+                        <td class="center">OR</td>
+                    </tr>
+                     <tr>
+                        <td><input name="hostname" placeholder="Hostname"/></td>
+                    </tr>
+                    <tr>
+                        <td>Subnet information:</td>
+                        <td><input name="subnet" placeholder="Optional"/></td>
+                    </tr>
+                    <tr>
+                        <td>Profile:</td>
+                        <td>
+                            <input readonly=true value="{{ configuration_profile.name }}"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Credentials:</td>
+                        <td>
+                            <input readonly=true value="{{ windows_credential.domain }}\{{ windows_credential.login }}"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Priority:</td>
+                        <td><input name="priority" type="number" placeholder="Min=1 Max=99"/></td>
+                    </tr>
+                    <tr>
+                        <td rowspan=2>Number of tries:</td>
+                        <td><input type="number" name="retries_discovery" placeholder="Discovery max tries"/></td>
+                    </tr>
+                    <tr>
+                        <td><input type="number" name="retries_ioc" placeholder="IOC scan max tries"/></td>
+                    </tr>
+                     <tr>
+                        <td>Force scan:</td>
+                        <td><input type="checkbox" name="force" id="scan_force" value="0" /></td>
+                    </tr>
+                    <tr>
+                        <td colspan=2 class="right"><input class="btn btn-primary" type="submit" value="Scan" /></td>
+                    </tr>
+                </table>
+            </td>
+             <td style="padding-left:100px">
+                <table class="form_table" style="height:auto">
+                    <tr>
+                        <td>OR</td>
+                    </tr>
+                </table>
+            </td>
+            <td style="padding-left:80px">
+                <table class="form_table" style="height:auto">
+                    <tr>
+                        <td>Target list:</td>
+                        <td><textarea name="ip_list" class="list" placeholder="1 IP per line"></textarea></td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</form>
+    <img src="{{ url_for('static', filename='img/loading.gif') }}" id="loading_gif" style="display: none;" />
+    <div id="result"></div>
+<script src="{{ url_for('static', filename='js/jquery-2.1.3.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/prettyprint.js') }}"></script>
+<script src="{{ url_for('static', filename='js/jquery.placeholder.js') }}"></script>
+<script src="{{ url_for('static', filename='js/scan.js') }}"></script>
+</div>
+
+
+{% endblock%}

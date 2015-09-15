@@ -1,0 +1,219 @@
+a, a:visited, a:active {
+  color: #444;
+}
+
+#vis {
+  width: 1000px;
+  height: 600px;
+  margin-bottom: 10px;
+}
+
+footer {
+  text-align: center;
+}
+
+#view_selection {
+  margin-top: 10px;
+}
+
+.top_labels {
+  font-size: 21px;
+  writing-mode: tb-rl;
+  fill: #aaa;
+}
+
+.tooltip {
+	position: absolute;
+	top: 100px;
+	left: 100px;
+  -moz-border-radius:5px;
+	border-radius: 5px;
+  border: 2px solid #000;
+	/* background: #222222; */
+  background: #fff;
+	opacity: .9;
+	/* color: #eeeeee; */
+  color: black;
+	padding: 10px;
+	width: 300px;
+	font-size: 12px;
+	z-index: 10;
+}
+
+.tooltip .title {
+	font-size: 13px;
+}
+
+.tooltip .name {
+  font-weight:bold;
+}
+
+#hackyTable
+{
+ position:relative;
+}
+#left-sidebar
+{
+    display:none;
+    position:absolute;
+    width:150px;
+    top:0;
+    right:0;    
+}
+#left-sidebar-container
+{
+    height: 600px;
+    background-color:rgba(255,255,255,0.75);
+}
+#left-sidebar select
+{
+    width:150px;
+}
+#left-sidebar-toggle-div
+{
+    text-align:right;
+}
+#right-sidebar
+{
+    display:none;
+    position:absolute;
+    top:0;
+    left:0;
+    background-color:rgba(255,255,255,0.5);
+}
+#clear_filters
+{
+    text-align:right;
+    float:right;
+}
+#filter-list
+{
+    height: 400px;
+    overflow: auto
+}
+.widecontainer
+{
+    margin-top:20px;
+    width:1000px;    
+    margin-left:auto;
+    margin-right:auto;        
+}
+.sub-filter-block
+{
+    padding-left:10px;
+}
+
+.dashboard {
+	border-collapse: collapse;
+}
+.dashboard td {
+	border: 1px solid #BBBBBB;
+}
+
+#hostdetailsalert {
+	color: red;
+	font-weight: bold;
+}
+
+/* Tree graph on host details page */
+.node {
+  cursor: pointer;
+}
+
+.node circle {
+  fill: #fff;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+.node circle.hide {
+  display: none;
+}
+.rednode text {
+  fill: red;
+}
+
+.node text {
+  font: 10px sans-serif;
+}
+
+.link {
+  fill: none;
+  stroke: #ccc;
+  stroke-width: 1.5px;
+}
+
+
+table.list td
+{
+    padding-left:5px;
+    padding-right:5px;
+    text-align:center;
+    border: 1px solid #004780;
+    vertical-align:middle;
+}
+
+tr.table_headline td {
+    background-color:#004780;
+    color:white;
+    font-weight:bold;
+    border:1px solid white;
+    padding-top:4px;
+    padding-bottom:4px;
+}
+
+table.form_table tr td:first-child
+{
+    padding-right:20px;
+    line-height:175%;
+    font-weight:bold;
+    font-size:1.2em;
+}
+
+.table_form_table_td_first
+{
+    font-weight:bold;
+    font-size:1.2em;
+    line-height:175%;
+}
+
+table#config {
+    width: 100%;
+}
+
+table#config > tbody > tr > td,
+table#config > thead > tr > td,
+table#config > tr > td {
+    padding-left:1.5%;
+    padding-right:1.5%;
+    width:33.33%;
+}
+
+/*table#config > tbody > tr:first-child td,
+table#config > tr:first-child td {
+    border-left:1px solid black;
+}*/
+
+table#config table {
+    width:100%;
+}
+
+.center { text-align:center; }
+.left { text-align:left; }
+.right { text-align:right; }
+.middle { vertical-align:middle; }
+
+input[type=file], select {
+    width:auto;
+}
+
+td input[type=checkbox]{
+    margin-top:7px;
+}
+
+textarea.list
+{
+    width:400px;
+    height:390px;
+}
+
+.error { color:red }

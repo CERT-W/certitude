@@ -1,0 +1,19 @@
+.python/
+tmp/
+db/*.db
+static/data/*.csv
+
+
+*.ioc
+*.ioc.modified
+*.pyc
+*.target
+
+# Test related
+
+results/*.txt
+results/processed/*.txt
+resources/binaries/
+resources/scripts/
+DR_PLUS/
+upload/*.txt

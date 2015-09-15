@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+
+{% block main %}
+
+<h1 style="margin-top:50px;">CERTitude - User list</h1>
+
+{# <div style='width:600px;margin-top:20px;'> #}
+
+{% if errors %}
+<br/><pre class="error">{{ errors }}</pre>
+{% endif %}
+
+<div style="margin-top:20px;">	
+<table class="list">
+    <tr class="table_headline">
+        <td>ID</td>
+        <td>Username</td>
+        <td>Email</td>
+        <td>Status</td>
+        <td>Delete</td>
+    </tr>
+    {% for user in users %}
+        <tr>
+            <td class="center">{{ user.id }}</td>
+            <td>{{ user.username }}</td>
+            <td>{{ user.email }}</td>
+            <td>
+                <a href="{{url_for('userSwitchActive', userid=user.id)}}">
+                    {% if user.active %} 
+                        <span style="color:#090">Enabled</span>
+                    {% else %} 
+                        <span style="color:#900">Disabled</span>
+                    {% endif %}
+                </a>
+            </td>
+            <td><a href="{{url_for('userDelete', userid = user.id)}}">[X]</a></td>
+        </tr>
+    {% endfor %}
+</table>
+<br /><br />
+<a href="{{url_for('userAdd')}}">Add a new user...</a>
+
+
+{% endblock%}
+

@@ -1,0 +1,8 @@
+output_*.xml
+*.pyc
+_log/*.log
+*.db
+certs/
+*.cer
+*.key
+*.crt

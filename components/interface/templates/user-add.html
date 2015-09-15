@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+
+{% block main %}
+
+<h1 style="margin-top:50px;">CERTitude - New user</h1>
+
+{% if errors %}
+<br/><pre class="error">{{ errors }}</pre>
+{% endif %}
+
+{# <div style='width:600px;margin-top:20px;'> #}
+<div style="margin-top:20px;">
+
+    <form action="{{url_for('userAdd')}}" method="POST">
+        <table class="form_table">
+            <tr>
+                <td>New user login :</td>
+                <td><input name="username" value="{{username}}"/></td>
+            </tr>
+            <tr>
+                <td>New user password :</td>
+                <td><input name="password" type="password" /></td>
+            </tr>
+            <tr>
+                <td>Repeat :</td>
+                <td><input name="password2" type="password" /></td>
+            </tr>
+            <tr>
+                <td>Email :</td>
+                <td><input name="email" value="{{email}}"/></td>
+            </tr>
+            <tr>
+                <td>Your password :</td>
+                <td><input name="user_password" type="password" /></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>
+                    <input type="submit" class="btn btn-primary" value="Add this user" />
+                </td>
+            </tr>
+        </table>
+    </form>
+
+</div>
+
+{% endblock%}
+

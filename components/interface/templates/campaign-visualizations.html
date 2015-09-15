@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+
+{% block main %}
+
+<h1 style="margin-top:50px;">CERTitude - Results: Batch Selection</h1>
+
+{% if errors %}
+<br/><pre class="error">{{ errors }}</pre>
+{% endif %}
+
+<table style="margin-top:20px;" class="form_table">	
+    <tr>
+        <td rowspan=3>Select a batch:</td>
+        <td>
+            <select name="batch" id="batch">
+                <option selected=selected> </option>
+                {% for batch in batches %}
+                    <option onClick="location.href='{{url_for('campaignvisualizationbatch', batchid=batch.id)}}'">{{batch.name}}</option>
+                {% endfor %}
+            </select>
+        </td>
+    </tr>
+</table>
+<br />
+<a href="{{ url_for('scanbatchAdd') }}">Or add a new batch...</a>
+
+
+{% endblock%}

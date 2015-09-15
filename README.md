@@ -1,33 +1,71 @@
-CERTitude
-==============
-Remote Python IOC scanner for Windows targets
+CERTitude - The seeker of IOC
+=============
+
+# Install guide
+
+## Software Requirements
+
+- Python >= 2.7.9
+- OpenSSL if you want to use SSL
 
 
-### Ajouter un module
+## Installing Python requirements
 
-1. Créer le script d'extraction et le placer dans `ressources/`. Celui-ci doit respecter les conditions suivantes :
-	- Être écrit en Batch ou Bash.
-	- Restituer les données extraites dans un fichier TSV (Tab Separated Value).
-2. Créer le fichier .sql associé réalisant l'importation
-3. Créer le contrôleur associé dans les répertoires `flatevaluators/` et/ou `logicevaluators`.
-4. Lier le contrôleur à CERTitude dans le fichier `targethandler.py` (evaluator list, drop list...)
-
-### Utilisation
-
-Après avoir clôné le dépôt :
-$ python.bat
-$ python web.py
-
-Ouvrir un navigateur sur http://127.0.0.1:5000/
-
-Login / mot de passe à modifier dans le fichier web.py :
-app.config.update(dict(
-	USERNAME='seeker',
-	PASSWORD='certitude'))
+```batch
+cd dist
+pip install -r requirements.txt
+pycrypto-2.6.1.win32-py2.7.exe
+install-pyopenssl.bat
+```
 
 
-###
+## Generating SSL certificate & private key
 
---
-CERT-Solucom
+```batch
+cd ssl
+gen-cert-for-me.bat
+```
+
+
+## Tweaking your config file
+
+Edit `config.py`
+
+- Enable HTTPS:
+    - `USE_SSL=True`
+    - `SSL_KEY_FILE = 'path/to/key'`
+    - `SSL_CERT_FILE = 'path/to/cer'`
+    
+- Database location: `BASE_DE_DONNEES_QUEUE = 'path/to/db'`
+- Set the server SALT for password hashing (based on sha256)
+
+
+# Run guide
+
+## Initializing the database
+
+`python main.py init`
+
+
+## Runnning things
+
+- Interface : `python main.py run -c interface`
+- Scanner : `python main.py run -c iocscan [-b batch]`
+
+
+# Misc
+
+## Contact
+
 cert@solucom.fr
+
+&copy; Solucom 2015
+
+
+## Contributors
+
+- Aurélien BAUD
+- Adrien DEGRANGE
+- Jean MARSAULT
+- Vincent NGUYEN
+- Fabien SCHWEBEL

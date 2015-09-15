@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+
+{% block main %}
+
+<h1 style="margin-top:50px;">CERTitude - Scan progress</h1>
+<p>List of the {{ tasks_data|length }} last tasks.</p>
+<table class="dashboard">
+	<thead>
+		<tr>
+		{% for h in headers %}
+            <th>{{ h }}</th>
+        {% endfor %}
+        <th>scan result</th>
+		</tr>
+	</thead>
+	<tbody>
+	{% for t in tasks_data %}
+		<tr>
+		{% for f in t %}
+			<td>
+            {% if loop.first %}
+				<a href='campaignvisualizations/{{ f }}'>
+					<b>{{ f }}</b>
+				</a>
+			{% else %}
+				{{ f }}
+			{% endif %}
+			</td>
+		{% endfor %}
+        <td><a href='campaignvisualizations/{{ t.0 }}'>&nbsp;&raquo;&nbsp;</a></td>
+		</tr>
+	{% endfor %}
+	</tbody>
+</table>
+
+{% endblock%}

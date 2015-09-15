@@ -1,0 +1,120 @@
+{% extends "layout.html" %}
+
+{% block main %}
+
+<script>
+
+    var set = false;
+
+    function showFloatingDiv(content,e)
+    {
+        if (!set)
+        {
+            d = document.getElementById('floating_div');
+            d.style.position='absolute';
+            
+            t = content.split('||')
+            c = t.join('<br />')
+            d.innerHTML = c
+            
+            d.style.display = 'block';
+            d.style.top = (e.clientY+21)+'px';
+            d.style.left = (e.clientX+13)+'px';
+            set = true;
+        }
+    }
+    
+    function hideFloatingDiv()
+    {
+        d = document.getElementById('floating_div');
+        d.style.top='-300px';
+        set = false;
+    }
+
+</script>
+
+<h1 style="margin-top:50px;">CERTitude - Configuration &amp; Profiles</h1>
+
+{% if errors %}
+<br/><pre class="error">{{ errors }}</pre>
+{% endif %}
+
+<div style="margin-top:20px;"></div>
+<div style="display:none; z-index:10; border: 1px solid black; background-color: white; padding:10px;" id="floating_div"></div>
+
+<table cols=3 id="config">
+    <tr>
+        <td><h2>IOC List</h2></td>
+        <td><h2>IOC Scan Profiles</h2></td>
+        <td><h2>Windows Credentials</h2></td>
+    </tr>
+    <tr>
+        <td>
+            <br />
+            <table class="list">
+                <tr class="table_headline">
+                    <td>Name</td>
+                    <td>Date added</td>
+                    <td>Delete</td>
+                </tr>
+                {% for xmlioc in xmliocs %}
+                    <tr>
+                        <td>{{xmlioc.name}}&nbsp;<img src="{{ url_for('static', filename='img/open.svg') }}" onclick='window.open("/ioc/{{xmlioc.id}}")'/></td>
+                        <td>{{xmlioc.date_added}}</td>
+                        <td><a href="{{url_for('xmliocDelete', xmliocid=xmlioc.id)}}">[X]</a></td>
+                    </tr>
+                {% endfor %}
+            </table>
+            <br /><br />
+            <a href="{{url_for('xmliocAdd')}}">Add a new IOC...</a>
+        </td>
+        <td>
+            <br />
+            <table class="list">
+                <tr class="table_headline">
+                    <td>Name</td>
+                    <td>
+                        Host<br/>
+                        Confidential
+                    </td>
+                    <td>
+                        IOC<br />
+                        List
+                    </td>
+                    <td>Delete</td>
+                </tr>
+                {% for profile in configuration_profiles %}
+                    <tr>
+                        <td>{{profile.name}}</td>
+                        <td>{{profile.host_confidential}}</td>
+                        <td><img src="{{ url_for('static', filename='img/open.svg') }}" onMouseOver="showFloatingDiv('{{iocdesclist[profile.id]}}', event)" onMouseOut="hideFloatingDiv()"/></td>
+                        <td><a href="{{url_for('profileDelete', profileid=profile.id)}}">[X]</a></td>
+                    </tr>
+                {% endfor %}
+            </table>
+            <br /><br />
+            <a href="{{url_for('profileAdd')}}">Add a new scan profile...</a>
+        </td>
+        <td>
+            <br />
+            <table class="list">
+                <tr class="table_headline">
+                    <td>Domain</td>
+                    <td>Login</td>
+                    <td>Delete</td>
+                </tr>
+                {% for wincred in windows_credentials %}
+                    <tr>
+                        <td>{{wincred.domain}}</td>
+                        <td>{{wincred.login}}</td>
+                        <td><a href="{{url_for('wincredDelete', wincredid=wincred.id)}}">[X]</a></td>
+                    </tr>
+                {% endfor %}
+            </table>
+            <br /><br />
+            <a href="{{url_for('wincredAdd')}}">Add a new credential...</a>
+        </td>
+    </tr>
+</table>
+
+{% endblock%}
