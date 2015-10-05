@@ -68,17 +68,17 @@ class OpenIOCParser:
             self.fromString = True
         else:
             slef.fromString = False
-        
+
     ''' METHOD parse
         Sets attribute __tree to the LogicTree (nodes are AND/OR) version of the OpenIOC file
     '''
     def parse(self):
-    
+
         self.__normalTree = None
         self.__reductedTree = None
         self.__atomicIOC = {}
         self.__differentTree = False
-        
+
         if not self.fromString:
             XMLTree = ET.parse(self.object)
             XMLRoot = XMLTree.getroot()
@@ -103,7 +103,7 @@ class OpenIOCParser:
             self.__reductedTree = self.createIOCTree(IOCTreeRoot)
         else:
             self.__reductedTree = self.createIOCTree(IOCTreeRoot, True)
-        
+
         if self.__differentTree:
             if self.__reductedTree is None:
                 logger.log(logging.WARNING, 'L\'IOC %s n\'a pas pu etre ajoute car aucun de ses elements ne peut etre evalue' % self.object)
@@ -111,14 +111,14 @@ class OpenIOCParser:
                 logger.log(logging.WARNING, 'L\'IOC %(fn)s a du etre modifie pour etre interprete, voir le fichier %(fn)s.modified' % {'fn':self.object})
                 nfn = self.object + '.modified'
                 normalTree = self.createIOCTree(IOCTreeRoot)
-                
+
                 f = open(nfn, 'w')
                 f.write('Arbre normal :\n\n')
                 f.write(str(normalTree))
                 f.write('\n\nArbre modifie :\n\n')
                 f.write(str(self.__reductedTree))
                 f.close()
-                
+
 
     ''' METHOD createIOCTree - recursive
         creates LogicTree from ElementTree root
@@ -127,7 +127,7 @@ class OpenIOCParser:
     def createIOCTree(self, root, reducted=False):
 
         children = []
-        
+
         for indicatorItemChild in root.findall('IndicatorItem'):
             newIOC = self.__createIOC(indicatorItemChild)
             if (not reducted) or ((newIOC.document in self.allowedElements.keys()) and (newIOC.search in self.allowedElements[newIOC.document])):
@@ -142,7 +142,7 @@ class OpenIOCParser:
                 children.append(newTree)
 
         ret = ioc.IOCTree(root.attrib['operator'], children) if children!=[] else None
-        
+
         return ret
 
     ''' GETTER getTree '''
@@ -154,12 +154,12 @@ class OpenIOCParser:
         IOC as an IOC object
     '''
     def __createIOC(self, iocE):
-        
+
         condition = iocE.attrib['condition']
-        
+
         if not 'id' in iocE.attrib.keys():
             raise OpenIOCParserException('IndicatorItem does not have an id (B64='+base64.b64encode(iocE.text))
-        
+
         ioc_id = iocE.attrib['id']
         context = list(iocE.findall('Context'))
         content = list(iocE.findall('Content'))
@@ -179,12 +179,12 @@ class OpenIOCParser:
     ''' GETTER getAtomicIOC '''
     def getAtomicIOC(self):
         return self.__atomicIOC
-        
 
-        
+
+
 ############# MAIN #############
 
 
 if __name__=='__main__':
-    
+
     pass

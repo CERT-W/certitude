@@ -283,7 +283,7 @@ class MSRPCBind(Structure):
         ('_ctx_items', '_-ctx_items', 'self["ctx_num"]*self._CTX_ITEM_LEN'),
         ('ctx_items',':'),
     )
- 
+
     def __init__(self, data = None, alignment = 0):
         Structure.__init__(self, data, alignment)
         if data is None:
@@ -296,7 +296,7 @@ class MSRPCBind(Structure):
 
     def addCtxItem(self, item):
         self.__ctx_items.append(item)
-    
+
     def getData(self):
         self['ctx_num'] = len(self.__ctx_items)
         for i in self.__ctx_items:
@@ -357,7 +357,7 @@ class MSRPCBindAck(Structure):
             item = CtxItemResult(data)
             self.__ctx_items.append(item)
             data = data[len(item):]
-            
+
 class MSRPCBindNak(Structure):
     structure = ( 
         ('RejectedReason','<H=0'),
@@ -422,7 +422,7 @@ class DCERPC_v5(DCERPC):
         self.__domain = ''
         self.__lmhash = ''
         self.__nthash = ''
-        
+
         self.__clientSigningKey = ''
         self.__serverSigningKey = ''
         self.__clientSealingKey = ''
@@ -447,7 +447,7 @@ class DCERPC_v5(DCERPC):
 
     def set_max_tfrag(self, size):
         self.__max_xmit_size = size
-    
+
     def set_credentials(self, username, password, domain = '', lmhash = '', nthash = ''):
         self.set_auth_level(RPC_C_AUTHN_LEVEL_CONNECT)
         self.__username = username
@@ -799,10 +799,10 @@ class DCERPC_v5(DCERPC):
                             # Yes.. NTLM2 doesn't increment sequence when receiving
                             # the packet :P
                             self.__sequence += 1
-                
+
                 if sec_trailer['auth_pad_len']:
                     answer = answer[:-sec_trailer['auth_pad_len']]
-              
+
             retAnswer += answer
         return retAnswer
 
@@ -816,7 +816,7 @@ class DCERPC_v5(DCERPC):
         self._max_ctx += 1
         answer.set_ctx_id(self._max_ctx)
         answer.__callid = self.__callid
-        
+
         answer.bind(newUID, alter = 1, bogus_binds = bogus_binds)
         return answer
 

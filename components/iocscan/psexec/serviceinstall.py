@@ -37,7 +37,7 @@ class ServiceInstall():
             self.connection = SMBObject
 
         self.share = ''
- 
+
     def getShare(self):
         return self.share
 
@@ -57,7 +57,7 @@ class ServiceInstall():
             print "[!] Error requesting shares on %s, aborting....." % (self.connection.getRemoteHost())
             raise
 
-        
+
     def createService(self, handle, share, path):
         #print "[*] Creating service %s on %s....." % (self.__service_name, self.connection.getRemoteHost())
 
@@ -135,7 +135,7 @@ class ServiceInstall():
                    self.connection.deleteDirectory(share,'BETO')
                    return str(share)
         return None
-        
+
 
     def install(self):
         if self.connection.isGuestSession():
@@ -187,7 +187,7 @@ class ServiceInstall():
                         self.rpcsvc.DeleteService(service)
                     except:
                         pass
-      
+
     def uninstall(self):
         fileCopied = True
         serviceCreated = True

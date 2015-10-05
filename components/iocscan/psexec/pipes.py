@@ -55,11 +55,11 @@ class Pipes(Thread):
 
 
 class RemoteStdOutPipe(Pipes):
-    
+
     def __init__(self, remoteHost, dport, credentials, pipe, permissions):
         Pipes.__init__(self, remoteHost, dport, credentials, pipe, permissions)
         self.out = ''
-      
+
     def run_loop(self):
 
         try:
@@ -73,7 +73,7 @@ class RemoteStdOutPipe(Pipes):
                     #sys.stdout.write(ans)
                     #sys.stdout.flush()
                     self.out += ans
-                        
+
                 else:
                     # Don't echo what I sent, and clear it up
                     LastDataSent = ''
@@ -151,7 +151,7 @@ class RemoteShell(cmd.Cmd):
             pass
 
         self.send_data('\r\n')
- 
+
     def do_put(self, s):
         try:
             if self.transferClient is None:

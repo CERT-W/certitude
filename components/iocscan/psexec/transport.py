@@ -174,7 +174,7 @@ class DCERPCTransport:
         # default is 0: don'fragment. 
         # subclasses may override this method
         self._max_send_frag = 0
-     
+
     def get_credentials(self):
         return (
             self._username,
@@ -365,7 +365,7 @@ class SMBTransport(DCERPCTransport):
         self.__handle = self.__smb_connection.openFile(self.__tid, self.__filename)
         self.__socket = self.__smb_connection.getSMBServer().get_socket()
         return 1
-    
+
     def disconnect(self):
         self.__smb_connection.disconnectTree(self.__tid)
         # If we created the SMB connection, we close it, otherwise
@@ -390,7 +390,7 @@ class SMBTransport(DCERPCTransport):
                 self.__smb_connection.transactNamedPipe(self.__tid,self.__handle,data, waitAnswer = False)
         if forceRecv:
             self.__pending_recv += 1
-        
+
     def recv(self, forceRecv = 0, count = 0 ):
         if self._max_send_frag or self.__pending_recv:
             # _max_send_frag is checked because it's the same condition we checked
@@ -405,7 +405,7 @@ class SMBTransport(DCERPCTransport):
 
     def get_smb_connection(self):
         return self.__smb_connection
-    
+
     def set_smb_connection(self, smb_connection):
         self.__smb_connection = smb_connection
         user, passwd, domain, lm, nt = smb_connection.getCredentials()[:5]
@@ -467,7 +467,7 @@ class SMBBackwardCompatibilityTransport(DCERPCTransport):
         self.__handle = self.__smb_server.nt_create_andx(self.__tid, self.__filename)
         self.__socket = self.__smb_server.get_socket()
         return 1
-    
+
     def disconnect(self):
         self.__smb_server.disconnect_tree(self.__tid)
         # If we created the SMB connection, we close it, otherwise
@@ -492,7 +492,7 @@ class SMBBackwardCompatibilityTransport(DCERPCTransport):
                 self.__smb_server.TransactNamedPipe(self.__tid,self.__handle,data, noAnswer = noAnswer, waitAnswer = 0)
         if forceRecv:
             self.__pending_recv += 1
-        
+
     def recv(self, forceRecv = 0, count = 0 ):
         if self._max_send_frag or self.__pending_recv:
             # _max_send_frag is checked because it's the same condition we checked

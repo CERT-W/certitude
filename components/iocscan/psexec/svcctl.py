@@ -106,7 +106,7 @@ SERVICE_STOPPED               = 0x00000001
 
 
 class SVCCTLSessionError(Exception):
-    
+
     error_messages = {
  ERROR_PATH_NOT_FOUND            : ("ERROR_PATH_NOT_FOUND", "The system cannot find the path specified."),          
  ERROR_ACCESS_DENIED             : ("ERROR_ACCESS_DENIED", "Access is denied."),
@@ -138,7 +138,7 @@ class SVCCTLSessionError(Exception):
     def __init__( self, error_code):
         Exception.__init__(self)
         self.error_code = error_code
-       
+
     def get_error_code( self ):
         return self.error_code
 
@@ -150,7 +150,7 @@ class SVCCTLSessionError(Exception):
             return 'SVCCTL SessionError: code: %s - %s - %s' % (str(self.error_code), error_msg_short, error_msg_verbose)
         else:
             return 'SVCCTL SessionError: unknown error code: %s' % (str(self.error_code))
-    
+
 
 class SVCCTLServiceStatus(Structure):
     structure = (
@@ -207,7 +207,7 @@ class SVCCTLRDeleteService(Structure):
     structure = (
         ('ContextHandle','20s'),
     )
- 
+
 class SVCCTLRControlService(Structure):
     opnum = 1
     alignment = 4
@@ -280,7 +280,7 @@ class SVCCTLRCloseServiceHandle(Structure):
     structure = (
        ('ContextHandle','20s'),
     )
-   
+
 class SVCCTLRCloseServiceHandlerResponse(Structure):
     alignment = 4
     structure = (
@@ -310,8 +310,8 @@ class SVCCTLRCreateServiceW(Structure):
         ('Password','<L=0'),
         ('PwSize','<L=0'),
     )
-    
- 
+
+
 class SVCCTLRCreateServiceWResponse(Structure):
     alignment = 4
     structure = (
@@ -901,7 +901,7 @@ class DCERPCSvcCtl:
         controlService['Control']  = SERVICE_CONTROL_STOP
         ans = self.doRequest(controlService, checkReturn = 1)
         return SVCCTLServiceStatus(ans)
- 
+
     def OpenServiceA(self, handle, name):
         """
         opens a service
@@ -970,9 +970,9 @@ class DCERPCSvcCtl:
                item['Data'] = arguments[i]+'\x00'.encode('utf-16le')
                args_data += str(item) 
            startService['argv'] = args_data
-        
+
         ans = self.doRequest(startService, checkReturn = 1)
-      
+
         return ans
 
     def CreateServiceW(self, handle, serviceName, displayName, binaryPathName, serviceType = SERVICE_WIN32_OWN_PROCESS):
@@ -1031,7 +1031,7 @@ class DCERPCSvcCtl:
         closeHandle['ContextHandle'] = handle
         ans = self.doRequest(closeHandle, checkReturn = 1)
         return SVCCTLRCloseServiceHandlerResponse(ans)
- 
+
     def EnumServicesStatusW(self, handle, serviceType = SERVICE_KERNEL_DRIVER | SERVICE_FILE_SYSTEM_DRIVER | SERVICE_WIN32_OWN_PROCESS | SERVICE_WIN32_SHARE_PROCESS | SERVICE_INTERACTIVE_PROCESS, serviceState = SERVICE_STATE_ALL ):
         """
         enumerates service records in the specified SCM database
@@ -1090,7 +1090,7 @@ class DCERPCSvcCtl:
             index += len(serviceStatus)
 
         return enumServicesList
-        
+
     def ChangeServiceConfigW(self, handle,  displayName = None, binaryPathName = None, serviceType = None, startType = None, serviceStartName = None, password = None):
         """
         changes a service's configuration parameters in the SCM database
@@ -1102,9 +1102,9 @@ class DCERPCSvcCtl:
         :param INT startType: the new startType of the service. None if you don't want to change this value. See [MS-SCMR] section 3.1.4.11 for a list of possible values.
         :param UNICODE startStartName: the name of the account under which the service should run. None if you don't want to change this value. 
         :param BINARY password: a password value for the user. None if you don't want to change this value.
-        
+
         :return: On error it raises an exception. Otherwise it was successful
-        
+
         VERY IMPORTANT: If you dare to change the username and password, you need to 
         take care of the following:
         From [MS-SCMR], section 3.1.4.12
@@ -1164,7 +1164,7 @@ class DCERPCSvcCtl:
 
         ans = self.doRequest(changeConfig, checkReturn = 1)
         return ans
- 
+
     def QueryServiceStatus(self, handle):
         """
         returns the current status of the specified service
@@ -1223,4 +1223,4 @@ class DCERPCSvcCtl:
             packet['QueryConfig']['DisplayName'] = confStr['DisplayName']['Data']
 
         return packet
- 
+

@@ -4,6 +4,7 @@ import os, re
 
 def getARPTable():
 
+    # Command is arp -a
 	ret = []
 	commandOutput = os.popen('arp -a').read()
 
@@ -13,6 +14,7 @@ def getARPTable():
 	ACTIVE_IFACE = None
 	ID=1
 
+    # Parse output
 	for line in lines:
 		
 		if line=='':
@@ -27,6 +29,9 @@ def getARPTable():
 				
 			line = re.sub(r' +', r' ', line).strip()
 			IPV4, PHYSICAL, CACHE_TYPE = line.split(' ')
+
+            # Lnaguage trick
+            # French is "dynamique" and English is "dynamic"
 			CACHE_TYPE = 'dynamic' if CACHE_TYPE[:4]=='dyna' else 'static'
 			
 			ret.append([ID, ACTIVE_IFACE, IPV4, PHYSICAL, CACHE_TYPE])
@@ -39,6 +44,6 @@ def main():
 	ARPEntries = getARPTable()
 	
 	print '\n'.join(['\t'.join([str(f) for f in e]) for e in ARPEntries])
-    
+
 if __name__=='__main__':
     main()

@@ -13,7 +13,7 @@ class Structure:
     """ sublcasses can define commonHdr and/or structure.
         each of them is an tuple of either two: (fieldName, format) or three: (fieldName, ':', class) fields.
         [it can't be a dictionary, because order is important]
-        
+
         where format specifies how the data in the field will be converted to/from bytes (string)
         class is the class to use when unpacking ':' fields.
 
@@ -68,7 +68,7 @@ class Structure:
             ?&fieldname "Address of field fieldname".
                         For packing it will simply pack the id() of fieldname. Or use 0 if fieldname doesn't exists.
                         For unpacking, it's used to know weather fieldname has to be unpacked or not, i.e. by adding a & field you turn another field (fieldname) in an optional field.
-            
+
     """
     commonHdr = ()
     structure = ()
@@ -130,7 +130,7 @@ class Structure:
             if self.alignment:
                 if len(data) % self.alignment:
                     data += ('\x00'*self.alignment)[:-(len(data) % self.alignment)]
-            
+
         #if len(data) % self.alignment: data += ('\x00'*self.alignment)[:-(len(data) % self.alignment)]
         return data
 
@@ -157,7 +157,7 @@ class Structure:
             data = data[size:]
 
         return self
-        
+
     def __setitem__(self, key, value):
         self.fields[key] = value
         self.data = None        # force recompute
@@ -167,7 +167,7 @@ class Structure:
 
     def __delitem__(self, key):
         del self.fields[key]
-        
+
     def __str__(self):
         return self.getData()
 
@@ -256,10 +256,10 @@ class Structure:
                 data += '\0'
             l = pack('<L', len(data)/2)
             return '%s\0\0\0\0%s%s' % (l,l,data)
-                    
+
         if data is None:
             raise Exception, "Trying to pack None"
-        
+
         # literal specifier
         if format[:1] == ':':
             return str(data)
@@ -448,7 +448,7 @@ class Structure:
             pass
 
         # XXX: Try to match to actual values, raise if no match
-        
+
         # quote specifier
         if format[:1] == "'" or format[:1] == '"':
             return len(format)-1
@@ -531,7 +531,7 @@ class Structure:
             if field[1][-l:] == descriptor:
                 return field[0]
         return None
-        
+
     def findLengthFieldFor(self, fieldName):
         descriptor = '-%s' % fieldName
         l = len(descriptor)
@@ -539,13 +539,13 @@ class Structure:
             if field[1][-l:] == descriptor:
                 return field[0]
         return None
-        
+
     def zeroValue(self, format):
         two = format.split('*')
         if len(two) == 2:
             if two[0].isdigit():
                 return (self.zeroValue(two[1]),)*int(two[0])
-                        
+
         if not format.find('*') == -1: return ()
         if 's' in format: return ''
         if format in ['z',':','u']: return ''
@@ -662,7 +662,7 @@ class _Test_nested(_StructureTest):
         a['nest1']['data'] = 'hola manola'
         a['nest2']['data'] = 'chau loco'
         a['int'] = 0x12345678
-    
+
 class _Test_Optional(_StructureTest):
     class theClass(Structure):
         structure = (
@@ -671,11 +671,11 @@ class _Test_Optional(_StructureTest):
                 ('Name','w'),
                 ('List','<H*<L'),
             )
-            
+
     def populate(self, a):
         a['Name'] = 'Optional test'
         a['List'] = (1,2,3,4)
-        
+
 class _Test_Optional_sparse(_Test_Optional):
     def populate(self, a):
         _Test_Optional.populate(self, a)
@@ -693,7 +693,7 @@ class _Test_AsciiZArray(_StructureTest):
         a['head'] = 0x1234
         a['tail'] = 0xabcd
         a['array'] = ('hola','manola','te traje')
-        
+
 class _Test_UnpackCode(_StructureTest):
     class theClass(Structure):
         structure = (
@@ -728,7 +728,7 @@ class _Test_AAA(_StructureTest):
         a['data']="\xA0\xA1\xA2\xA3\xA4\xA5\xA6\xA7\xA8\xA9"
         a['icv'] = 0x05060708
         #a['iv'] = 0x01020304
-        
+
 if __name__ == '__main__':
     _Test_simple().run()
 

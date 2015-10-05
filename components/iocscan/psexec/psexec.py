@@ -32,7 +32,7 @@ import time
 
 global out
 out=''
-            
+
 class RemComMessage(Structure):
     structure = (
         ('Command','4096s=""'),
@@ -99,7 +99,7 @@ class PSEXEC:
 
     def kill(self):
         sys.exit(0)
-        
+
     def openPipe(self, s, tid, pipe, accessMask):
         pipeReady = False
         tries = 50
@@ -146,7 +146,7 @@ class PSEXEC:
                     print e
                     sys.exit(1)
                 installService = serviceinstall.ServiceInstall(rpctransport.get_smb_connection(), f)
-    
+
             installService.install()
 
             if self.__exeFile is not None:
@@ -170,7 +170,7 @@ class PSEXEC:
             # ( I know.. globals are nasty :P )
             global LastDataSent
             LastDataSent = ''
-            
+
             # Create the pipes threads
             stdin_pipe  = RemoteStdInPipe(rpctransport,'\%s%s%d' % (RemComSTDIN ,packet['Machine'],packet['ProcessID']), smb.FILE_WRITE_DATA | smb.FILE_APPEND_DATA, installService.getShare() )
             stdin_pipe.start()
@@ -178,7 +178,7 @@ class PSEXEC:
             stdout_pipe.start()
             stderr_pipe = RemoteStdErrPipe(rpctransport,'\%s%s%d' % (RemComSTDERR,packet['Machine'],packet['ProcessID']), smb.FILE_READ_DATA )
             stderr_pipe.start()
-            
+
             # And we stay here till the end
             ans = s.readNamedPipe(tid,fid_main,8)
             if len(ans):
@@ -186,7 +186,7 @@ class PSEXEC:
                ##print "[*] Process %s finished with ErrorCode: %d, ReturnCode: %d" % (self.__command, retCode['ErrorCode'], retCode['ReturnCode'])
             installService.uninstall()
             unInstalled = True            
-            
+
         except:           
             if unInstalled is False:
                 installService.uninstall()
@@ -229,13 +229,13 @@ class Pipes(Thread):
 
 
 class RemoteStdOutPipe(Pipes):
-    
+
     def __init__(self, transport, pipe, permisssions):
         Pipes.__init__(self, transport, pipe, permisssions)
-      
+
     def run(self):
         self.connectPipe()
-        
+
         while True:
             try:
                 ans = self.server.readFile(self.tid,self.fid, 0, 1024)
@@ -250,7 +250,7 @@ class RemoteStdOutPipe(Pipes):
                             #sys.stdout.write(ans)
                             #sys.stdout.flush()
                             out += ans
-                            
+
                         else:
                             # Don't echo what I sent, and clear it up
                             LastDataSent = ''
@@ -328,7 +328,7 @@ class RemoteShell(cmd.Cmd):
             pass
 
         self.send_data('\r\n')
- 
+
     def do_put(self, s):
         try:
             if self.transferClient is None:
@@ -404,7 +404,7 @@ if __name__ == '__main__':
     group = parser.add_argument_group('authentication')
 
     group.add_argument('-hashes', action="store", metavar = "LMHASH:NTHASH", help='NTLM hashes, format is LMHASH:NTHASH')
- 
+
     if len(sys.argv)==1:
         parser.print_help()
         sys.exit(1)

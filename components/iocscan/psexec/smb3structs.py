@@ -235,7 +235,7 @@ SMB2_LEASE_FLAG_PARENT_LEASE_KEY_SET = 0x4
 
 # SMB2_CREATE_DURABLE_HANDLE_REQUEST_V2 Flags
 SMB2_DHANDLE_FLAG_PERSISTENT = 0x02
- 
+
 # SMB2_CLOSE
 # Flags
 SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB  = 0x0001
@@ -587,7 +587,7 @@ class SMB2SessionSetup(Structure):
         #self['SecurityBufferOffset'] = 24 + SMB2_PACKET_SIZE +len(self['AlignPad']) 
         #self['SecurityBufferLength'] += len(self['AlignPad'])
         return Structure.getData(self)
-        
+
 
 class SMB2SessionSetup_Response(Structure):
     structure = (

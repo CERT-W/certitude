@@ -80,7 +80,7 @@ class RemoteCmd:
     REMCOMSVC_SERVICE_NAME = PROGRAM_NAME + '-RCS'
     REMCOMSVC_SERVICE_DESC = 'Remote Command provided by CERTitude (c) Solucom 2014'
 
-    
+
     ######
     #
     #   Logging functionality
@@ -89,10 +89,10 @@ class RemoteCmd:
     def __log__(self, debugLevel, message, exception=''):
 
         m = self.__login + '@' + self.__ip + ' ' + message.decode('cp1252')
-        
+
         if exception!='':
             m += ' (%s)' % str(exception)
-          
+
         self.logger.log(debugLevel, m)
 
 
@@ -102,18 +102,18 @@ class RemoteCmd:
     #   Does the setup
     #
     def __init__(self, logger, ip, login, password, **kwargs):
-     
+
     # init variables
 
         self.__ip = ip
         self.__login = login
-    
+
     #KWargs
-    
+
         self.logger = logger
         domain = DEFAULT_DOMAIN if 'domain' not in kwargs.keys() else kwargs['domain']
         commandPriority = DEFAULT_PRIORITY if 'priority' not in kwargs.keys() else kwargs['priority']
-     
+
     # Control variables : what did I set up ?
         self.__loggedIn = False
         self.__treeConnected = False
@@ -132,7 +132,7 @@ class RemoteCmd:
         self.__serviceManager = None
         self.__service = None
         self.activeDirName = PROGRAM_NAME + '-active'
-        
+
         self.rootDir = '.' if 'rootDir' not in kwargs.keys() else kwargs['rootDir']
 
         # Try to setup the program
@@ -164,7 +164,7 @@ class RemoteCmd:
         except WritableShareException,e:
             self.__log__(LEVEL_CRITICAL,'',e)
             self.__del__(True)
-            
+
         self.__writableShareId = self.__connection.connectTree(self.__writableShare)
         self.__log__(LEVEL_INFODBG, 'Tree connected')
         self.__treeConnected = True
@@ -176,7 +176,7 @@ class RemoteCmd:
         except smbconnection.SessionError, e:
             if e.getErrorCode()!=nt_errors.STATUS_OBJECT_NAME_COLLISION:
                 raise
-            
+
         self.__directoryCreated = True
         self.__log__(LEVEL_INFODBG, 'Directory created')
 
@@ -201,7 +201,7 @@ class RemoteCmd:
         self.__startService()
         self.__serviceStarted = True
         self.__log__(LEVEL_INFODBG, 'RemCom service has been started')
-        
+
 
     ######
     #
@@ -213,13 +213,13 @@ class RemoteCmd:
 
         try:
             self.__unsetup()
-                
+
         except Exception, e:
             self.logger.critical('Cleanup error: '+str(e).replace('\n', ' - '))
-        
+
         if fromError:
             sys.exit(1)
-        
+
 
 
     ######
@@ -236,7 +236,7 @@ class RemoteCmd:
 
         # Deletes RemComSvc
         if self.__serviceCreated:
-            
+
             self.__rpcsvc.DeleteService(self.__service['ContextHandle'])
             self.__rpcsvc.CloseServiceHandle(self.__service['ContextHandle'])
             self.__log__(LEVEL_INFODBG, 'RemCom service deleted')
@@ -319,7 +319,7 @@ class RemoteCmd:
     def __createService(self, serviceName, serviceDesc, path):
 
         path = '%s\\%s' % (self.getWritablePath(), path)
-        
+
         try:
             # try to open service
             svcCheck = self.__rpcsvc.OpenServiceW(self.__serviceManager, serviceName.encode('utf-16le'))
@@ -459,7 +459,7 @@ class RemoteCmd:
 
         # Most commands return an additional line. See if keeping it is useful
         return ret[:-2]
-        
+
 
     ######
     #
@@ -472,14 +472,14 @@ class RemoteCmd:
         allShares = self.__connection.listShares()
         dirName = PROGRAM_NAME + '-write-test'
         tries = []
-        
+
         for share in allShares:
 
             # Filter by share type
             if share['shi1_type'] in [smbconnection.smb.SHARED_DISK, smbconnection.smb.SHARED_DISK_HIDDEN]:
                 shareName = share['shi1_netname'][:-1]
                 shareOK = True
-                
+
                 try:
                     # try to create directory
                     self.__connection.createDirectory(shareName, dirName)
@@ -492,7 +492,7 @@ class RemoteCmd:
                     # We found a share, delete our test
                     self.__connection.deleteDirectory(shareName, dirName)
                     return shareName
-                
+
         raise WritableShareException('No writable share found among ['+(', '.join(tries))+']')
 
 
@@ -513,7 +513,7 @@ class RemoteCmd:
             if e.getErrorCode() != nt_errors.STATUS_OBJECT_NAME_NOT_FOUND:
                 self.__log__(LEVEL_CRITICAL, 'Cannot open file '+filename+': ',e)
                 self.__del__(True)
-        
+
         try:
             # then create it !
             fid = self.__connection.createFile(self.__writableShareId, filename)
@@ -588,7 +588,7 @@ class RemoteCmd:
                     # append
                     ret += data
                     offset += l
-                    
+
         except smbconnection.SessionError, e:
             self.__log__(LEVEL_CRITICAL, 'Cannot read '+filename+': ',e)
             self.__del__(True)
@@ -612,10 +612,10 @@ class RemoteCmd:
 
                 if bytesWritten is None:
                     bytesWritten = len(data)
-                    
+
                 offset += bytesWritten
                 data = data[bytesWritten:]
-                
+
             # EOF
             self.__closeFile(fid)
             return bytesWritten
@@ -657,7 +657,7 @@ class RemoteCmd:
         except IOError:
             self.__log__(LEVEL_CRITICAL, 'File '+lpath+' was not found')
             self.__del__(True)
-            
+
     ######
     #
     #   Gets file <remoteName> to <localFile> from

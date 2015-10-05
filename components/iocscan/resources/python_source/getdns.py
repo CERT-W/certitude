@@ -6,6 +6,7 @@ IP_PATTERN = r'^(25[0-5]|2[0-4][0-9]|[1-9][0-9]{2}|[1-9][0-9]|[0-9]\.){3}25[0-5]
 
 def getDNSEntries():
 
+    # Command is ipconfig /displaydns (space may be omitted)
 	ret = []
 	commandOutput = os.popen('ipconfig/displaydns').read()
 	
@@ -19,6 +20,7 @@ def getDNSEntries():
 	previous, c = '', 0
 	RNAME, RTYPE, TTL, DATALEN, RD_HOST, RD_IPV4 = None, None, None, None, None, None
 	
+    # Parse output
 	for line in lines:
 		
 		if line=='':
@@ -51,7 +53,8 @@ def getDNSEntries():
 				
 			if c==3:
 				DATALEN = value
-				
+			
+            # May return a hostname or an IPv4 address
 			if c==5:
 				RD_HOST, RD_IPV4 = ['-', value] if re.search(IP_PATTERN, value) else [value, '-']
 			
@@ -67,6 +70,6 @@ def main():
 	dnsentries = getDNSEntries()
 	
 	print '\n'.join(['\t'.join([str(f) for f in e]) for e in dnsentries])
-    
+
 if __name__=='__main__':
     main()

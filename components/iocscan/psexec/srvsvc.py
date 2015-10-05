@@ -74,7 +74,7 @@ class SRVSVCSessionError(Exception):
     def __init__( self, error_code):
         Exception.__init__(self)
         self.error_code = error_code
-       
+
     def get_error_code( self ):
         return self.error_code
 
@@ -86,7 +86,7 @@ class SRVSVCSessionError(Exception):
             return 'SRVSVC SessionError: code: %s - %s - %s' % (str(self.error_code), error_msg_short, error_msg_verbose)
         else:
             return 'SRVSVC SessionError: unknown error code: %s' % (str(self.error_code))
-        
+
 
 # Structures
 # We should move this to ndrutils.py once we port it to structure
@@ -177,7 +177,7 @@ class SESSION_INFO_502(Structure):
                 self['cltype_name'] = ''
                 self['transport'] = ''
             return 
-            
+
     def __init__(self, data = None, alignment = 0):
         self.__deferred = self.deferred()
         self.__nonDeferred = self.nonDeferred(data, alignment)
@@ -203,7 +203,7 @@ class SESSION_INFO_502(Structure):
             return self.__nonDeferred[key]
         else:
             return self.__deferred[key]
-        
+
 class SESSION_INFO_502_CONTAINER(Structure):
     structure = (
        ('EntriesRead','<L=0'),
@@ -247,7 +247,7 @@ class SHARE_INFO_1(Structure):
                 self['netname'] = ''
                 self['remark'] = ''
             return 
-            
+
     def __init__(self, data = None, alignment = 0):
         self.__deferred = self.deferred()
         self.__nonDeferred = self.nonDeferred(data, alignment)
@@ -432,7 +432,7 @@ class SRVSVCNetShareGetInfoHeader(ImpactPacket.Header):
 
     def get_server_referent_id(self):
         return self.get_long(0, '<')
-    
+
     def set_server_referent_id(self, id):
         self.set_long(0, id, '<')
 
@@ -478,7 +478,7 @@ class SRVSVCNetShareGetInfoHeader(ImpactPacket.Header):
     def get_share_max_count(self):
         server_max_count = self._get_serlen()
         return self.get_long(16 + server_max_count, '<')
-    
+
     def set_share_max_count(self, count):
         server_max_count = self._get_serlen()
         self.set_long(16 + server_max_count, count, '<')
@@ -522,7 +522,7 @@ class SRVSVCNetShareGetInfoHeader(ImpactPacket.Header):
         server_max_count = self._get_serlen()
         share_max_count = self._get_shalen()
         return SRVSVCNetShareGetInfoHeader.__SIZE + server_max_count + share_max_count
-    
+
 
 class SRVSVCRespNetShareGetInfoHeader(ImpactPacket.Header):
     __SIZE = 8
@@ -627,7 +627,7 @@ class ShareInfoLevel2Entry:
 
     def get_current_uses(self):
         return self._current_uses
-    
+
 class DCERPCSrvSvc:
     def __init__(self, dcerpc):
         self._dcerpc = dcerpc
@@ -680,7 +680,7 @@ class DCERPCSrvSvc:
             entry['NetName'] = item['netname']['Data']
             entry['Remark'] = item['remark']['Data']
             shareList.append(entry)
-      
+
         return shareList
 
     def NetrSessionEnum(self, serverName='', clientName='', userName='', preferedMaximumLength=0xffffffff, resumeHandle=0): 
@@ -731,7 +731,7 @@ class DCERPCSrvSvc:
             entry['HostName'] = item['cname']['Data']
             entry['UserName'] = item['username']['Data']
             sessionList.append(entry)
-      
+
         return sessionList
 
 

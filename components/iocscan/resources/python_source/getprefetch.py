@@ -2,6 +2,7 @@
 
 import os, re, struct, string
 
+# Strings in python
 def strings(content, min=4):
 	
 	result = ""
@@ -19,6 +20,7 @@ def strings(content, min=4):
 
 def getPrefetch():
 
+    # List .pf files in \WINDOWS\Prefect (admin rights often needed)
 	ret = []
 	commandOutput = os.popen('dir /b C:\\WINDOWS\\Prefetch\\*.pf').read()
 
@@ -34,6 +36,8 @@ def getPrefetch():
 		f = open(filename, 'rb')
 		c = f.read()
 		
+        # http://www.forensicswiki.org/wiki/Windows_Prefetch_File_Format
+        #
 		# 	0			4			8			C			F
 		# 0	VERSION		SIGNATURE	N/A			SIZE
 		# 1 [ ORIG_FN ......................................
@@ -64,6 +68,8 @@ def getPrefetch():
 		
 		for s in strings(c_0)+strings(c_1):
 			if '\\' in s and FILENAME.lower() in s.lower():
+
+                # Not an exact science, but works more that doing nothing :D
 				ORIG_PATH = s.replace('\\DEVICE\\HARDDISKVOLUME1','C:')
 				ORIG_PATH = ORIG_PATH.replace('\\DEVICE\\HARDDISKVOLUME2','D:')
 		
@@ -79,6 +85,6 @@ def main():
 	entries = getPrefetch()
 	
 	print '\n'.join(['\t'.join([str(f) for f in e]) for e in entries])
-    
+
 if __name__=='__main__':
     main()

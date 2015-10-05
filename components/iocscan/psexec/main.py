@@ -24,9 +24,9 @@ def run(cible, logger):
     cible. Il recevra en arguments les resultats précédemment agrégés, sous
     forme d'un dictionnaire, et contenant notamment l'IP de la cible et son
     hostname, et le logger.
-    
+
     La fonction retournera un objet SQLalchemy avec les attributs découverts.
-    
+
     En cas d'exception, la consigner avec le logger approprié et retourner 1
     ou laisser remonter l'exception.
     """
@@ -37,7 +37,7 @@ def run(cible, logger):
     raw_result = psobject.run(cible["ip"])
     print raw_result
     psobject.kill();
-    
+
     if True:
         logger.info('  IP présente dans la base de SEPM')
         resultats.presence = True

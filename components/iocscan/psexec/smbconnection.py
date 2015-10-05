@@ -549,7 +549,7 @@ class SessionError(Exception):
         Exception.__init__(self)
         self.error = error
         self.packet = packet
-       
+
     def getErrorCode( self ):
         return self.error
 
