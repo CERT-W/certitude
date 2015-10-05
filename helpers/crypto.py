@@ -5,34 +5,44 @@ from Crypto import Random
 
 import base64, hashlib, sys
 
+# Generate a new random key
+# Size is the maximum available size for AES
 def genOptimalKey():
     optimalSize = max(AES.key_size)
     return Random.new().read(optimalSize)
-
     
+    
+# Create an AES key from text (password)
+# Padding is used as a countermeasure to SHA2 rainbow tables 
 def keyFromText(text):
     return hashlib.sha256(__pad(text, AES.block_size)).digest()
     
+    
+# Pad a message to a multiple of size
+# Repeats chr(X) X times at the end of the message (X>0)
 def __pad(m, size):
     l = len(m)
     lp = size if l%size==0 else size - (l%size)
     
     return m + chr(lp)*lp
    
-   
+
+# well, unpad :)
 def __unpad(m):
     lp = ord(m[-1])
     
     return m[:-lp]
  
- 
+
+# IV is stored at the beginning of the encrypted message
 def encrypt(m, key, aes_mode = AES.MODE_CBC):
     iv = Random.new().read(AES.block_size)
     cipher = AES.new(key, aes_mode, iv)
     
     return base64.b64encode(iv + cipher.encrypt(__pad(m, AES.block_size)))
  
- 
+
+# Retrieves IV from the beginning and uses it to decipher message
 def decrypt(m, key, aes_mode = AES.MODE_CBC):
     c = base64.b64decode(m)
     
