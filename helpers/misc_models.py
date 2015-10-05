@@ -34,12 +34,12 @@ class XMLIOC(Base):
 
 class Batch(Base):
     __tablename__ = 'batches'
-    
+
     id = Column(Integer, primary_key = True)
     name = Column(String)
     configuration_profile_id = Column(Integer)
     windows_credential_id = Column(Integer)
-    
+
 class ConfigurationProfile(Base):
     __tablename__ = 'configuration_profiles'
 
@@ -56,10 +56,10 @@ class WindowsCredential(Base):
     domain = Column(String)
     login = Column(String)
     encrypted_password = Column(String)
-    
+
 class GlobalConfig(Base):
     __tablename__ = 'global_config'
-    
+
     id = Column(Integer, primary_key=True)
     key = Column(String)
     value = Column(String)

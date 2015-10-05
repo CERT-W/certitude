@@ -62,7 +62,7 @@ class PSEXEC:
         }
 
 
-    def __init__(self, command, path, exeFile, protocols = None, 
+    def __init__(self, command, path, exeFile, protocols = None,
                  username = '', password = '', domain = '', hashes = None):
         if not protocols:
             protocols = PSEXEC.KNOWN_PROTOCOLS.keys()
@@ -185,9 +185,9 @@ class PSEXEC:
                retCode = RemComResponse(ans)
                ##print "[*] Process %s finished with ErrorCode: %d, ReturnCode: %d" % (self.__command, retCode['ErrorCode'], retCode['ReturnCode'])
             installService.uninstall()
-            unInstalled = True            
+            unInstalled = True
 
-        except:           
+        except:
             if unInstalled is False:
                 installService.uninstall()
             sys.stdout.flush()
@@ -218,7 +218,7 @@ class Pipes(Thread):
             user, passwd, domain, lm, nt = self.credentials
             self.server.login(user, passwd, domain, lm, nt)
             lock.release()
-            self.tid = self.server.connectTree('IPC$') 
+            self.tid = self.server.connectTree('IPC$')
 
             self.server.waitNamedPipe(self.tid, self.pipe)
             self.fid = self.server.openFile(self.tid,self.pipe,self.permissions, creationOption = 0x40, fileAttributes = 0x80)
@@ -239,7 +239,7 @@ class RemoteStdOutPipe(Pipes):
         while True:
             try:
                 ans = self.server.readFile(self.tid,self.fid, 0, 1024)
-            except Exception, e: 
+            except Exception, e:
                 pass
                 #print e
             else:
@@ -254,7 +254,7 @@ class RemoteStdOutPipe(Pipes):
                         else:
                             # Don't echo what I sent, and clear it up
                             LastDataSent = ''
-                        # Just in case this got out of sync, i'm cleaning it up if there are more than 10 chars, 
+                        # Just in case this got out of sync, i'm cleaning it up if there are more than 10 chars,
                         # it will give false positives tho.. we should find a better way to handle this.
                         if LastDataSent > 10:
                             LastDataSent = ''
@@ -270,7 +270,7 @@ class RemoteStdErrPipe(Pipes):
         while True:
             try:
                 ans = self.server.readFile(self.tid,self.fid, 0, 1024)
-            except Exception, e: 
+            except Exception, e:
                 pass
             else:
                 try:
@@ -303,7 +303,7 @@ class RemoteShell(cmd.Cmd):
  lcd {path}                 - changes the current local directory to {path}
  exit                       - terminates the server process (and this session)
  put {src_file, dst_path}   - uploads a local file to the dst_path RELATIVE to the connected share (%s)
- get {file}                 - downloads pathname RELATIVE to the connected share (%s) to the current local dir 
+ get {file}                 - downloads pathname RELATIVE to the connected share (%s) to the current local dir
  ! {cmd}                    - executes a local shell cmd
 """ % (self.share, self.share)
         self.send_data('\r\n', False)

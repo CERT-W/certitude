@@ -9,8 +9,8 @@
 # REMCOMSVC library. It provides a way to retrieve the RemComSvc binary file to be
 # uploaded to the target machine. This is used by psexec and smbrelayx
 #
-# If you want to compile this file yourself, get the source code from 
-# https://github.com/kavika13/RemCom, compile RemComSvc project, and 
+# If you want to compile this file yourself, get the source code from
+# https://github.com/kavika13/RemCom, compile RemComSvc project, and
 # dump the binary (hexlify) in this file, on the REMCOMSVC variable
 #
 # Author:
@@ -18,25 +18,25 @@
 #
 # Copyright note in remcomsvc.cpp:
 #
-# Copyright (c) 2006 Talha Tariq [ talha.tariq@gmail.com ] 
+# Copyright (c) 2006 Talha Tariq [ talha.tariq@gmail.com ]
 # All rights are reserved.
 #
-# Permission to use, copy, modify, and distribute this software 
-# for any purpose and without any fee is hereby granted, 
-# provided this notice is included in its entirety in the 
+# Permission to use, copy, modify, and distribute this software
+# for any purpose and without any fee is hereby granted,
+# provided this notice is included in its entirety in the
 # documentation and in the source files.
-# 
-# This software and any related documentation is provided "as is" 
-# without any warranty of any kind, either express or implied, 
-# including, without limitation, the implied warranties of 
-# merchantability or fitness for a particular purpose. The entire 
-# risk arising out of use or performance of the software remains 
-# with you. 
-# 
-# $Author:	Talha Tariq [ talha.tariq@gmail.com ] 
+#
+# This software and any related documentation is provided "as is"
+# without any warranty of any kind, either express or implied,
+# including, without limitation, the implied warranties of
+# merchantability or fitness for a particular purpose. The entire
+# risk arising out of use or performance of the software remains
+# with you.
+#
+# $Author:	Talha Tariq [ talha.tariq@gmail.com ]
 # 		uses some code from xCmd by Zoltan Csizmadia
 # $Revision:	Talha Tariq [ talha.tariq@gmail.com ] 	
-# $Revision:	Andres Ederra 
+# $Revision:	Andres Ederra
 #
 
 import binascii

@@ -21,7 +21,7 @@ class Structure:
            i.e. struct.pack('Hl',1,2) is valid, but format specifier 'Hl' is not (you must use 2 dfferent fields)
 
         format specifiers:
-          specifiers from module pack can be used with the same format 
+          specifiers from module pack can be used with the same format
           see struct.__doc__ (pack/unpack is finally called)
             x       [padding byte]
             c       [character]
@@ -45,7 +45,7 @@ class Structure:
             <       [little endian]
             >       [big endian]
 
-          usual printf like specifiers can be used (if started with %) 
+          usual printf like specifiers can be used (if started with %)
           [not recommeneded, there is no why to unpack this]
 
             %08x    will output an 8 bytes hex
@@ -564,7 +564,7 @@ class Structure:
         print "\n%s" % (msg)
         fixedFields = []
         for field in self.commonHdr+self.structure:
-            i = field[0] 
+            i = field[0]
             if i in self.fields:
                 fixedFields.append(i)
                 if isinstance(self[i], Structure):
@@ -572,7 +572,7 @@ class Structure:
                     print "%s}" % ind
                 else:
                     print "%s%s: {%r}" % (ind,i,self[i])
-        # Do we have remaining fields not defined in the structures? let's 
+        # Do we have remaining fields not defined in the structures? let's
         # print them
         remainingFields = list(set(self.fields) - set(fixedFields))
         for i in remainingFields:

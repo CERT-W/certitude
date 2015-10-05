@@ -23,7 +23,7 @@ from impacket.uuid import uuidtup_to_bin
 
 MSRPC_UUID_SVCCTL = uuidtup_to_bin(('367ABB81-9844-35F1-AD32-98F038001003', '2.0'))
 
-# Error Codes 
+# Error Codes
 ERROR_PATH_NOT_FOUND             = 3
 ERROR_ACCESS_DENIED              = 5
 ERROR_INVALID_HANDLE             = 6
@@ -77,7 +77,7 @@ SERVICE_AUTO_START            = 0x00000002
 SERVICE_DEMAND_START          = 0x00000003
 SERVICE_DISABLED              = 0x00000004
 
-# Error Control 
+# Error Control
 SERVICE_ERROR_IGNORE          = 0x00000000
 SERVICE_ERROR_NORMAL          = 0x00000001
 SERVICE_ERROR_SEVERE          = 0x00000002
@@ -108,32 +108,32 @@ SERVICE_STOPPED               = 0x00000001
 class SVCCTLSessionError(Exception):
 
     error_messages = {
- ERROR_PATH_NOT_FOUND            : ("ERROR_PATH_NOT_FOUND", "The system cannot find the path specified."),          
+ ERROR_PATH_NOT_FOUND            : ("ERROR_PATH_NOT_FOUND", "The system cannot find the path specified."),
  ERROR_ACCESS_DENIED             : ("ERROR_ACCESS_DENIED", "Access is denied."),
  ERROR_INVALID_HANDLE            : ("ERROR_INVALID_HANDLE", "The handle is invalid."),
  ERROR_INVALID_DATA              : ("ERROR_INVALID_DATA", "The data is invalid."),
  ERROR_INVALID_PARAMETER         : ("ERROR_INVALID_PARAMETER", "The parameter is incorrect."),
- ERROR_INSUFICIENT_BUFFER        : ("ERROR_INSUFICIENT_BUFFER", "The data area passed to a system call is too small."), 
+ ERROR_INSUFICIENT_BUFFER        : ("ERROR_INSUFICIENT_BUFFER", "The data area passed to a system call is too small."),
  ERROR_INVALID_NAME              : ("ERROR_INVALID_NAME", "The specified name is invalid."),
- ERROR_INVALID_LEVEL             : ("ERROR_INVALID_LEVEL", "The level specified contains an unsupported value."),           
+ ERROR_INVALID_LEVEL             : ("ERROR_INVALID_LEVEL", "The level specified contains an unsupported value."),
  ERROR_MORE_DATA                 : ("ERROR_MORE_DATA", "More data is available."),
  ERROR_DEPENDENT_SERVICES_RUNNING: ("ERROR_DEPENDENT_SERVICES_RUNNING", "The service cannot be stopped because other running services are dependent on it."),
  ERROR_INVALID_SERVICE_CONTROL   : ("ERROR_INVALID_SERVICE_CONTROL", "The requested control code is not valid, or it is unacceptable to the service."),
- ERROR_SERVICE_REQUEST_TIMEOUT   : ("ERROR_SERVICE_REQUEST_TIMEOUT", "The request timed out."), 
+ ERROR_SERVICE_REQUEST_TIMEOUT   : ("ERROR_SERVICE_REQUEST_TIMEOUT", "The request timed out."),
  ERROR_SERVICE_ALREADY_RUNNING   : ("ERROR_SERVICE_ALREADY_RUNNING", "The target service is already running."),
- ERROR_INVALID_SERVICE_ACCOUNT   : ("ERROR_INVALID_SERVICE_ACCOUNT", "The service account specified does not exist."),   
- ERROR_SERVICE_DISABLED          : ("ERROR_SERVICE_DISABLED", "The service is disabled."),          
- ERROR_CIRCULAR_DEPENDENCY       : ("ERROR_CIRCULAR_DEPENDENCY", "A circular dependency was specified."), 
- ERROR_SERVICE_DOES_NOT_EXISTS   : ("ERROR_SERVICE_DOES_NOT_EXISTS", "The service does not exist in the SCM database."), 
+ ERROR_INVALID_SERVICE_ACCOUNT   : ("ERROR_INVALID_SERVICE_ACCOUNT", "The service account specified does not exist."),
+ ERROR_SERVICE_DISABLED          : ("ERROR_SERVICE_DISABLED", "The service is disabled."),
+ ERROR_CIRCULAR_DEPENDENCY       : ("ERROR_CIRCULAR_DEPENDENCY", "A circular dependency was specified."),
+ ERROR_SERVICE_DOES_NOT_EXISTS   : ("ERROR_SERVICE_DOES_NOT_EXISTS", "The service does not exist in the SCM database."),
  ERROR_SERVICE_CANNOT_ACCEPT_CTRL: ("ERROR_SERVICE_CANNOT_ACCEPT_CTRL", "The requested control code cannot be sent to the service."),
- ERROR_SERVICE_NOT_ACTIVE        : ("ERROR_SERVICE_NOT_ACTIVE", "The service has not been started."), 
- ERROR_DATABASE_DOES_NOT_EXIST   : ("ERROR_DATABASE_DOES_NOT_EXIST", "The database specified does not exists."), 
- ERROR_SERVICE_LOGON_FAILURE     : ("ERROR_SERVICE_LOGON_FAILURE", "The service did not start due to a logon failure."), 
- ERROR_SERVICE_MARKED_FOR_DELETE : ("ERROR_SERVICE_MARKED_FOR_DELETE", "The service has been marked for deletion."), 
- ERROR_SERVICE_EXISTS            : ("ERROR_SERVICE_EXISTS", "The service already exists."), 
- ERROR_DUPLICATE_SERVICE_NAME    : ("ERROR_DUPLICATE_SERVICE_NAME", "The service already exists."), 
- ERROR_SHUTDOWN_IN_PROGRESS      : ("ERROR_SHUTDOWN_IN_PROGRESS", "The system is shutting down."), 
-    }    
+ ERROR_SERVICE_NOT_ACTIVE        : ("ERROR_SERVICE_NOT_ACTIVE", "The service has not been started."),
+ ERROR_DATABASE_DOES_NOT_EXIST   : ("ERROR_DATABASE_DOES_NOT_EXIST", "The database specified does not exists."),
+ ERROR_SERVICE_LOGON_FAILURE     : ("ERROR_SERVICE_LOGON_FAILURE", "The service did not start due to a logon failure."),
+ ERROR_SERVICE_MARKED_FOR_DELETE : ("ERROR_SERVICE_MARKED_FOR_DELETE", "The service has been marked for deletion."),
+ ERROR_SERVICE_EXISTS            : ("ERROR_SERVICE_EXISTS", "The service already exists."),
+ ERROR_DUPLICATE_SERVICE_NAME    : ("ERROR_DUPLICATE_SERVICE_NAME", "The service already exists."),
+ ERROR_SHUTDOWN_IN_PROGRESS      : ("ERROR_SHUTDOWN_IN_PROGRESS", "The system is shutting down."),
+    }
 
     def __init__( self, error_code):
         Exception.__init__(self)
@@ -146,7 +146,7 @@ class SVCCTLSessionError(Exception):
         key = self.error_code
         if (SVCCTLSessionError.error_messages.has_key(key)):
             error_msg_short = SVCCTLSessionError.error_messages[key][0]
-            error_msg_verbose = SVCCTLSessionError.error_messages[key][1] 
+            error_msg_verbose = SVCCTLSessionError.error_messages[key][1]
             return 'SVCCTL SessionError: code: %s - %s - %s' % (str(self.error_code), error_msg_short, error_msg_verbose)
         else:
             return 'SVCCTL SessionError: unknown error code: %s' % (str(self.error_code))
@@ -330,7 +330,7 @@ class SVCCTLREnumServicesStatusW(Structure):
         ('BuffSize','<L=0'),
         ('pResumeIndex','<L=123'),
         ('ResumeIndex','<L=0'),
-    ) 
+    )
 
 class SVCCTLREnumServicesStatusWResponse(Structure):
     alignment = 4
@@ -871,7 +871,7 @@ class DCERPCSvcCtl:
             answer = self._dcerpc.recv()
             if checkReturn and answer[-4:] != '\x00\x00\x00\x00':
                 error_code = unpack("<L", answer[-4:])[0]
-                raise SVCCTLSessionError(error_code)  
+                raise SVCCTLSessionError(error_code)
         return answer
 
     def DeleteService(self, handle):
@@ -968,7 +968,7 @@ class DCERPCSvcCtl:
            for i in range(len(arguments)):
                item = ndrutils.NDRStringW()
                item['Data'] = arguments[i]+'\x00'.encode('utf-16le')
-               args_data += str(item) 
+               args_data += str(item)
            startService['argv'] = args_data
 
         ans = self.doRequest(startService, checkReturn = 1)
@@ -1005,7 +1005,7 @@ class DCERPCSvcCtl:
         ans = self.doRequest(createService, checkReturn = 1)
         return SVCCTLRCreateServiceWResponse(ans)
 
-    def OpenSCManagerW(self): 
+    def OpenSCManagerW(self):
         """
         opens the SCM database on the specified server.
 
@@ -1073,9 +1073,9 @@ class DCERPCSvcCtl:
         enumServicesList = []
         for i in range(packet['ServicesReturned']):
             tmpDict = {}
-            serviceNamePtr = unpack('<L',data[index:index+4])[0] 
+            serviceNamePtr = unpack('<L',data[index:index+4])[0]
             index += 4
-            displayNamePtr = unpack('<L',data[index:index+4])[0] 
+            displayNamePtr = unpack('<L',data[index:index+4])[0]
             index += 4
             serviceStatus = SVCCTLServiceStatus(data[index:])
             tmpDict['ServiceType']       = serviceStatus['ServiceType']
@@ -1100,26 +1100,26 @@ class DCERPCSvcCtl:
         :param UNICODE binaryPathName: the new pathname for the binary to be executed when starting the service. None if you don't want to change this value
         :param UNICODE serviceType: the new type of the service. None if you don't want to change this value. See service types within this file or [MS-SCMR] section 3.1.4.12.
         :param INT startType: the new startType of the service. None if you don't want to change this value. See [MS-SCMR] section 3.1.4.11 for a list of possible values.
-        :param UNICODE startStartName: the name of the account under which the service should run. None if you don't want to change this value. 
+        :param UNICODE startStartName: the name of the account under which the service should run. None if you don't want to change this value.
         :param BINARY password: a password value for the user. None if you don't want to change this value.
 
         :return: On error it raises an exception. Otherwise it was successful
 
-        VERY IMPORTANT: If you dare to change the username and password, you need to 
+        VERY IMPORTANT: If you dare to change the username and password, you need to
         take care of the following:
         From [MS-SCMR], section 3.1.4.12
 
-        The server MUST treat the lpPassword as a clear-text password if the client 
-        is using RPC over TCP, ncacn_ip_tcp (as specified in [MS-RPCE]). 
+        The server MUST treat the lpPassword as a clear-text password if the client
+        is using RPC over TCP, ncacn_ip_tcp (as specified in [MS-RPCE]).
         See section 2.1.2 Client.
-        The server MUST treat the lpPassword as encrypted and decrypt it, if the 
-        client is using a RPC over NP, ncacn_np (as specified in [MS-RPCE]). 
-        The server MUST first retrieve a session key as specified in [MS-CIFS] 
-        (section 3.5.4.4). An RPC server application requests the session key of 
-        a client and then uses the routine as specified in [MS-LSAD] (section 5.1.2) 
+        The server MUST treat the lpPassword as encrypted and decrypt it, if the
+        client is using a RPC over NP, ncacn_np (as specified in [MS-RPCE]).
+        The server MUST first retrieve a session key as specified in [MS-CIFS]
+        (section 3.5.4.4). An RPC server application requests the session key of
+        a client and then uses the routine as specified in [MS-LSAD] (section 5.1.2)
         to decrypt the password.
 
-        It's your reponsibility to fill out the right password data in the password 
+        It's your reponsibility to fill out the right password data in the password
         parameter
         """
         changeConfig = SVCCTLRChangeServiceConfigW()

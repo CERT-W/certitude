@@ -12,7 +12,7 @@ class IOCTree():
 
     def __init__(self, name, children=[]):
         self.name = name
-        self.isLeaf = (children==[])   
+        self.isLeaf = (children==[])
         self.nodes = children
         self.infected = False
 

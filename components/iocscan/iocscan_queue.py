@@ -377,12 +377,12 @@ def demarrer_scanner(hWaitStop=None, batch=None):
         try:
 
             # Get targets to be scanned
-            # and that are not currently being scanned 
+            # and that are not currently being scanned
             # or that don't have any retry left
             queue = session.query(Task).filter_by(discovered=True, iocscanned=False, reserved_ioc=False).filter(Task.retries_left_ioc > 0)
 
             # Batch filtering
-            if batchquery is not None:        
+            if batchquery is not None:
                 queue = queue.filter_by(batch_id = batchquery.id)
 
             taille_queue = queue.count()

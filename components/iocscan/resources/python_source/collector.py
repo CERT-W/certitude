@@ -4,12 +4,12 @@ import sys
 
 # Dynamic import does not work with
 # pyinstaller (easy to undesrtsand why)...
-import getarp 
-import getdns 
-import getfiles 
-import getport 
-import getprefetch 
-import getprocess 
+import getarp
+import getdns
+import getfiles
+import getport
+import getprefetch
+import getprocess
 import getservices
 
 collectors = {

@@ -50,7 +50,7 @@ print '[+] Creating "seeker" account...'
 while True:
     password = getpass.getpass('Please enter "seeker" password: ')
     password2 = getpass.getpass('Repeat: ')
-    
+
     if password==password2:
         break
 

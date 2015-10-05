@@ -27,7 +27,7 @@ logger = logging.getLogger('LogicEval')
 logger.addHandler(sh)
 
 # FUTURE
-# 
+#
 # param :
 #	table_name
 #	accepted_param
@@ -109,7 +109,7 @@ class EvaluatorInterface:
 		else:
 			getCmd = 'bash get%(name)s.%(ext)s' % {'name':name, 'ext':ext}
 		
-		self.__initFiles = { 
+		self.__initFiles = {
 			self.__dbName : {
 				0 : 'del %(name)s' % {'name':self.__dbName},											# del template.db
 				1 : '%(cmd)s %(name)s.list' % {'name':name, 'cmd':getCmd},								# gettemplate.bat template.list

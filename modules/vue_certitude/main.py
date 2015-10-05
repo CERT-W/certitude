@@ -57,7 +57,7 @@ def view(user, args, logger, session):
 
     logger.debug('Lancement du module d\'API pour CERTitude')
     getargs = args[1]
-    
+
     regex = '^'+IP_REGEX+'(\/([1-9]|1[0-9]|2[0-9]|3[01]))?$'
         # Matches IP from 0.0.0.0 to 255.255.255.255
         # and allows (but not necessarily) masks from /1 to /31
@@ -65,18 +65,18 @@ def view(user, args, logger, session):
     result = re.match(regex, ip_donnee) != None
     ips = IPNetwork(ip_donnee)
     logger.debug(ips)
-    
+
     cibles_uniques = []
     for ip in ips:
         logger.debug('Requête en cours pour l\'ip ' + str(ip))
         cibles_uniques.append(session.query(Result).join(Task).filter(
                 Result.ip == str(ip)
             ).order_by('finished DESC').first())
-    
+
     donnees = []
     for c in cibles_uniques:
         if c:
             donnees.append([c.ip, c.os])
-    
+
     reponse = json.dumps(donnees, indent=4)
     return [200, 'application/json', reponse]

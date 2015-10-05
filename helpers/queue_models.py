@@ -23,7 +23,7 @@ class Task(Base):
     commentaire = Column(String(100))
     date_soumis = Column(DateTime, default=datetime.now)
     date_debut = Column(DateTime)
-    
+
     # From here, in english
     discovered = Column(Boolean, default=False)
     iocscanned = Column(Boolean, default=False)
@@ -34,6 +34,6 @@ class Task(Base):
     retries_left_discovery = Column(Integer, default=0)
     retries_left_ioc = Column(Integer, default=0)
     last_retry = Column(DateTime)
-    
+
     # Runtime configuration
     batch_id = Column(Integer)

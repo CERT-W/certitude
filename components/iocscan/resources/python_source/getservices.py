@@ -6,7 +6,7 @@ MD5SUMS = {}
 
 def getServiceQC(name):
 
-    # ServiCe QueryConfiguration 
+    # ServiCe QueryConfiguration
     commandOutput = os.popen('sc qc "'+name+'" 4096').read()
 
     lines = [ e.strip()  for e in commandOutput.split('\n')]

@@ -12,7 +12,7 @@ if __name__ == "__main__" and __package__ is None:
 # Lots of them...
 #
 import os
-import re #Regular expressions 
+import re #Regular expressions
 import subprocess, sys
 import json
 import time
@@ -266,7 +266,7 @@ def userDelete(userid):
     # CONFIGURATION, IOCs & PROFILES MANAGEMENT
 
 
-# Configuration homepage     
+# Configuration homepage
 @app.route('/config',)
 def config():
     if 'logged_in' in session:
@@ -283,7 +283,7 @@ def config():
         for cp in configuration_profiles:
             if len(cp.ioc_list)==0:
                 iocdesclist[cp.id] = ''
-                continue 
+                continue
             iocdesclist[cp.id] = '||'.join([ref[str(id)] for id in cp.ioc_list.split(',')])
 
         return render_template('config-main.html', xmliocs = xmliocs, windows_credentials = windows_credentials, configuration_profiles = configuration_profiles, iocdesclist = iocdesclist)
@@ -311,7 +311,7 @@ def wincredDelete(wincredid):
         return redirect(url_for('login'))
 
 
-@app.route('/config/xmlioc/<int:xmliocid>/delete')        
+@app.route('/config/xmlioc/<int:xmliocid>/delete')
 def xmliocDelete(xmliocid):
     if 'logged_in' in session:
 
@@ -329,7 +329,7 @@ def xmliocDelete(xmliocid):
         return redirect(url_for('login'))
 
 
-@app.route('/config/profile/<int:profileid>/delete')        
+@app.route('/config/profile/<int:profileid>/delete')
 def profileDelete(profileid):
     if 'logged_in' in session:
 
@@ -351,7 +351,7 @@ def profileDelete(profileid):
 
 # Adds a new credential
 # uses current user's password to decipher MASTER_KEY
-#        
+#
 @app.route('/config/wincredz/add',methods=['GET','POST'])
 def wincredAdd():
     if 'logged_in' in session:
@@ -560,7 +560,7 @@ def hostresult(hostid):
 
 
 # HOST.json
-# Result of the scan on a specific host        
+# Result of the scan on a specific host
 @app.route('/static/data/host.json/<int:hostid>')
 def hostjson(hostid):
     # if 'logged_in' in session:
@@ -709,7 +709,7 @@ def resultscsv(batchid):
             #Complete detection / IOC
             for id in all_iocs:
                 response += ',%.2f' % result_for_host[id]
-            response += '\n'     
+            response += '\n'
 
         return Response(status=200, response=response, content_type='text/plain')
     else:
@@ -784,7 +784,7 @@ def scanbatch(batchid):
                 # FROM host
                     # LEFT JOIN result
                         # ON host.host_id = result.host_id
-                # WHERE ''', 
+                # WHERE ''',
                 # '''ORDER BY result.result_id DESC
                 # LIMIT 1''')
         # if request.args.get('hostname', None) and len(request.args.get('hostname')) > 0:
@@ -830,7 +830,7 @@ def api_old_interface():
                     ip = ips[0]
 
                     return ip,ips
-                else:                
+                else:
                     if (param_ip and len(param_ip) > 0) or (param_hostname and len(param_hostname) > 0):
                         # Compute the IP(s) to scan
                         if param_ip:
@@ -980,7 +980,7 @@ def api_old_interface():
                                     continue
 
                             try:
-                                ip_int = int(ip)                                    
+                                ip_int = int(ip)
                             except ValueError,e:
                                 try:
                                     ipn = IPNetwork(ip)

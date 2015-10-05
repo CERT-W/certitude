@@ -33,9 +33,9 @@ def run(cible, logger):
     cible. Il recevra en arguments les resultats précédemment agrégés, sous
     forme d'un dictionnaire, et contenant notamment l'IP de la cible et son
     hostname, et le logger.
-    
+
     La fonction retournera un objet SQLalchemy avec les attributs découverts.
-    
+
     En cas d'exception, consigner si besoin avec le logger approprié et laisser
     remonter l'exception.
     """

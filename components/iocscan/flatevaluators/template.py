@@ -104,9 +104,9 @@ class EvaluatorInterface:
         getCmd = 'launch.bat %(command)s' % {'command':command}
 
         # CData collection
-        self.__initFiles = { 
+        self.__initFiles = {
             self.__dbName : {
-                0 : 'del %(name)s' % {'name':self.__dbName},                                            # Delete old DB if present        
+                0 : 'del %(name)s' % {'name':self.__dbName},                                            # Delete old DB if present
                 1 : '%(cmd)s %(name)s.list' % {'name':name, 'cmd':getCmd},                              # Collect data into <name>.list
                 2 : 'type %(name)s.sql | sqlite3 %(dbName)s' % {'name':name, 'dbName':self.__dbName},   # Insert data in empty database
                 3 : 'del %(name)s.list %(name)s.list.err' % {'name':name},                              # Remove <name>.list plain file

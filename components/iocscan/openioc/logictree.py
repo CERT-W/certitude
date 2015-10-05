@@ -29,7 +29,7 @@ class LogicTree:
 	def __init__(self, name, children=[]):
 
 		self.name = name
-		self.isLeaf = (children==[])   
+		self.isLeaf = (children==[])
 		self.nodes = children
 		self.uid = sha.new(str(random.random())).hexdigest()
 

@@ -11,7 +11,7 @@
 # Description:
 #   [MS-SRVS] interface implementation.
 #
-# TODO: NetServerEnum2 
+# TODO: NetServerEnum2
 
 import array
 from struct import *
@@ -50,26 +50,26 @@ NERR_DuplicateShare             = 0x00000846
 
 class SRVSVCSessionError(Exception):
     error_messages = {
- ERROR_ACCESS_DENIED          : ("ERROR_ACCESS_DENIED", "The user does not have access to the requested information."),          
- ERROR_INVALID_LEVEL          : ("ERROR_INVALID_LEVEL", "The value that is specified for the level parameter is invalid."),          
- ERROR_INVALID_PARAMETER      : ("ERROR_INVALID_PARAMETER", "One or more of the specified parameters is invalid."),          
- ERROR_MORE_DATA              : ("ERROR_MORE_DATA", "More entries are available. Specify a large enough buffer to receive all entries."),          
- ERROR_NOT_ENOUGH_MEMORY      : ("ERROR_NOT_ENOUGH_MEMORY", "Not enough storage is available to process this command."),          
- ERROR_FILE_NOT_FOUND         : ("ERROR_FILE_NOT_FOUND", "The system cannot find the file specified."),          
- ERROR_DUP_NAME               : ("ERROR_DUP_NAME", "A duplicate name exists on the network."),          
- ERROR_INVALID_DOMAINNAME     : ("ERROR_INVALID_DOMAINNAME", "The format of the specified NetBIOS name of a domain is invalid."),          
- ERROR_NOT_SUPPORTED          : ("ERROR_NOT_SUPPORTED", "The server does not support branch cache."),          
- ERROR_SERVICE_DOES_NOT_EXIST : ("ERROR_SERVICE_DOES_NOT_EXIST", "The branch cache component does not exist as an installed service."),          
- NERR_BufTooSmall             : ("NERR_BufTooSmall", "The client request succeeded. More entries are available. The buffer size that is specified by PreferedMaximumLength was too small to fit even a single entry."),          
- NERR_ClientNameNotFound      : ("NERR_ClientNameNotFound", "A session does not exist with the computer name."),          
+ ERROR_ACCESS_DENIED          : ("ERROR_ACCESS_DENIED", "The user does not have access to the requested information."),
+ ERROR_INVALID_LEVEL          : ("ERROR_INVALID_LEVEL", "The value that is specified for the level parameter is invalid."),
+ ERROR_INVALID_PARAMETER      : ("ERROR_INVALID_PARAMETER", "One or more of the specified parameters is invalid."),
+ ERROR_MORE_DATA              : ("ERROR_MORE_DATA", "More entries are available. Specify a large enough buffer to receive all entries."),
+ ERROR_NOT_ENOUGH_MEMORY      : ("ERROR_NOT_ENOUGH_MEMORY", "Not enough storage is available to process this command."),
+ ERROR_FILE_NOT_FOUND         : ("ERROR_FILE_NOT_FOUND", "The system cannot find the file specified."),
+ ERROR_DUP_NAME               : ("ERROR_DUP_NAME", "A duplicate name exists on the network."),
+ ERROR_INVALID_DOMAINNAME     : ("ERROR_INVALID_DOMAINNAME", "The format of the specified NetBIOS name of a domain is invalid."),
+ ERROR_NOT_SUPPORTED          : ("ERROR_NOT_SUPPORTED", "The server does not support branch cache."),
+ ERROR_SERVICE_DOES_NOT_EXIST : ("ERROR_SERVICE_DOES_NOT_EXIST", "The branch cache component does not exist as an installed service."),
+ NERR_BufTooSmall             : ("NERR_BufTooSmall", "The client request succeeded. More entries are available. The buffer size that is specified by PreferedMaximumLength was too small to fit even a single entry."),
+ NERR_ClientNameNotFound      : ("NERR_ClientNameNotFound", "A session does not exist with the computer name."),
  NERR_InvalidComputer         : ("NERR_InvalidComputer", "The computer name is not valid."), NERR_UserNotFound            : ("NERR_UserNotFound", "The user name could not be found."),
- NERR_DuplicateShare          : ("NERR_DuplicateShare", "The operation is not valid for a redirected resource. The specified device name is assigned to a shared resource."),          
- NERR_RedirectedPath          : ("NERR_RedirectedPath", "The device or directory does not exist."),          
+ NERR_DuplicateShare          : ("NERR_DuplicateShare", "The operation is not valid for a redirected resource. The specified device name is assigned to a shared resource."),
+ NERR_RedirectedPath          : ("NERR_RedirectedPath", "The device or directory does not exist."),
  NERR_UnknownDevDir           : ("NERR_UnknownDevDir", "The share name does not exist."),
- NERR_NetNameNotFound         : ("NERR_NetNameNotFound", "The device is not shared."),     
- NERR_DeviceNotShared         : ("NERR_DeviceNotShared", "The system cannot find the path specified."),          
- NERR_DuplicateShare          : ("NERR_DuplicateShare", "The alias already exists."),          
-    }    
+ NERR_NetNameNotFound         : ("NERR_NetNameNotFound", "The device is not shared."),
+ NERR_DeviceNotShared         : ("NERR_DeviceNotShared", "The system cannot find the path specified."),
+ NERR_DuplicateShare          : ("NERR_DuplicateShare", "The alias already exists."),
+    }
 
     def __init__( self, error_code):
         Exception.__init__(self)
@@ -82,7 +82,7 @@ class SRVSVCSessionError(Exception):
         key = self.error_code
         if (SRVSVCSessionError.error_messages.has_key(key)):
             error_msg_short = SRVSVCSessionError.error_messages[key][0]
-            error_msg_verbose = SRVSVCSessionError.error_messages[key][1] 
+            error_msg_verbose = SRVSVCSessionError.error_messages[key][1]
             return 'SRVSVC SessionError: code: %s - %s - %s' % (str(self.error_code), error_msg_short, error_msg_verbose)
         else:
             return 'SRVSVC SessionError: unknown error code: %s' % (str(self.error_code))
@@ -176,7 +176,7 @@ class SESSION_INFO_502(Structure):
                 self['username'] = ''
                 self['cltype_name'] = ''
                 self['transport'] = ''
-            return 
+            return
 
     def __init__(self, data = None, alignment = 0):
         self.__deferred = self.deferred()
@@ -215,7 +215,7 @@ class SESSION_INFO_502_CONTAINER(Structure):
         if data:
             self.__array = ndrutils.NDRArray(data = self['Buffer'], itemClass = SESSION_INFO_502)
             self['Buffer'] = self.__array
-        return 
+        return
 
     def __len__(self):
         return len(self.__array) + 4 + 4
@@ -246,7 +246,7 @@ class SHARE_INFO_1(Structure):
             if data is None:
                 self['netname'] = ''
                 self['remark'] = ''
-            return 
+            return
 
     def __init__(self, data = None, alignment = 0):
         self.__deferred = self.deferred()
@@ -286,7 +286,7 @@ class SHARE_INFO_1_CONTAINER(Structure):
             self.__array = ndrutils.NDRArray(data = self['Buffer'], itemClass = SHARE_INFO_1)
             self['Buffer'] = self.__array
 
-        return 
+        return
 
     def __len__(self):
         return len(self.__array) + 4 + 4
@@ -423,7 +423,7 @@ class SRVSVCNetShareGetInfoHeader(ImpactPacket.Header):
         self.set_server_actual_count(0)
         self.set_server('')
         self.set_share_max_count(0)
-        self.set_share_offset(0)        
+        self.set_share_offset(0)
         self.set_share_actual_count(0)
         self.set_share('')
         self.set_info_level(0)
@@ -503,7 +503,7 @@ class SRVSVCNetShareGetInfoHeader(ImpactPacket.Header):
         server_max_count = self._get_serlen()
         pad = ''
         if len(share) % 4:
-           pad = '\0' * (4 - len(share) % 4) 
+           pad = '\0' * (4 - len(share) % 4)
         share = share + pad
         self.get_bytes()[28 + server_max_count:28 + len(share)] = array.array('B', share)
         self._set_shalen(len(share))
@@ -576,14 +576,14 @@ class ShareInfoLevel2Entry:
                 pad = 0
                 if dlen % 4:
                     pad = 4 - dlen % 4
-                data = data[12 + dlen + pad:]                
+                data = data[12 + dlen + pad:]
             if p_path:
                 self.set_path(ndrutils.NDRString(data))
                 dlen = self.get_path().get_max_len() * 2
                 pad = 0
                 if dlen % 4:
                     pad = 4 - dlen % 4
-                data = data[12 + dlen + pad:]                
+                data = data[12 + dlen + pad:]
             if p_passwd:
                 self.set_passwd(ndrutils.NDRString(data))
                 dlen = self.get_passwd().get_max_len() * 2
@@ -640,7 +640,7 @@ class DCERPCSrvSvc:
             answer = self._dcerpc.recv()
             if checkReturn and answer[-4:] != '\x00\x00\x00\x00':
                 error_code = unpack("<L", answer[-4:])[0]
-                raise SRVSVCSessionError(error_code)  
+                raise SRVSVCSessionError(error_code)
             return answer
 
     def NetrShareEnum(self, serverName='', preferedMaximumLength=0xffffffff, resumeHandle=0):
@@ -674,7 +674,7 @@ class DCERPCSrvSvc:
         # Now let's return something useful
         shareList = []
         for i in range(ans['InfoStruct']['ShareInfo']['EntriesRead']):
-            item = ans['InfoStruct']['ShareInfo']['Buffer']['Item_%d'%i] 
+            item = ans['InfoStruct']['ShareInfo']['Buffer']['Item_%d'%i]
             entry = {}
             entry['Type'] = item['shi1_type']
             entry['NetName'] = item['netname']['Data']
@@ -683,7 +683,7 @@ class DCERPCSrvSvc:
 
         return shareList
 
-    def NetrSessionEnum(self, serverName='', clientName='', userName='', preferedMaximumLength=0xffffffff, resumeHandle=0): 
+    def NetrSessionEnum(self, serverName='', clientName='', userName='', preferedMaximumLength=0xffffffff, resumeHandle=0):
         """
         returns information about sessions that are established on a server (info struct 502 only supported)
 
@@ -722,7 +722,7 @@ class DCERPCSrvSvc:
         # Now let's return something useful
         sessionList = []
         for i in range(ans['InfoStruct']['SessionInfo']['EntriesRead']):
-            item = ans['InfoStruct']['SessionInfo']['Buffer']['Item_%d'%i] 
+            item = ans['InfoStruct']['SessionInfo']['Buffer']['Item_%d'%i]
             entry = {}
             entry['Active'] = item['sesi502_time']
             entry['IDLE']   = item['sesi502_idle_time']
@@ -745,7 +745,7 @@ class DCERPCSrvSvc:
         :return: a SHARE_INFO_2 like structure (strings in UNICODE). For the meaning of each field see [MS-SRVS] Section 2.2.4.24
 
         """
-        shareGetInfo = SRVSVCShareGetInfo() 
+        shareGetInfo = SRVSVCShareGetInfo()
         shareGetInfo['ServerName'] = ndrutils.NDRUniqueStringW()
         shareGetInfo['ServerName']['Data'] = serverName+'\x00'.encode('utf-16le')
         shareGetInfo['ServerName'].alignment = 4
@@ -761,14 +761,14 @@ class DCERPCSrvSvc:
         entry['Type'] = ans['InfoStruct']['ShareInfo2']['shi2_type']
         entry['NetName'] = ans['InfoStruct']['ShareInfo2']['netname']['Data']
         entry['Remark'] =ans['InfoStruct']['ShareInfo2']['remark']['Data']
-        entry['Permissions'] =ans['InfoStruct']['ShareInfo2']['shi2_permissions'] 
-        entry['MaxUses'] =ans['InfoStruct']['ShareInfo2']['shi2_max_uses'] 
-        entry['CurrentUses'] =ans['InfoStruct']['ShareInfo2']['shi2_current_uses'] 
+        entry['Permissions'] =ans['InfoStruct']['ShareInfo2']['shi2_permissions']
+        entry['MaxUses'] =ans['InfoStruct']['ShareInfo2']['shi2_max_uses']
+        entry['CurrentUses'] =ans['InfoStruct']['ShareInfo2']['shi2_current_uses']
         entry['Path'] =ans['InfoStruct']['ShareInfo2']['path']['Data']
 
         return entry
 
-    ################################################################################### 
+    ###################################################################################
     # Old functions, mantained just for compatibility reasons. Might be taken out soon
 
     #NetrShareEnum() with Level1 Info. Going away soon
@@ -795,7 +795,7 @@ class DCERPCSrvSvc:
       #NetrServerGetInfo() with Level 102 Info
       serverInfoReq = SRVSVCServerGetInfo()
       serverInfoReq['ServerName'] = (server+'\x00').encode('utf-16le')
-      data = self.doRequest(serverInfoReq, checkReturn = 1)  
+      data = self.doRequest(serverInfoReq, checkReturn = 1)
       return SRVSVCServerpInfo102(data)['ServerInfo']
 
     def get_share_info(self, server, share, level):

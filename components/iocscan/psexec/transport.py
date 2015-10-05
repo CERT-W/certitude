@@ -171,7 +171,7 @@ class DCERPCTransport:
             self._max_send_frag = send_fragment_size
 
     def set_default_max_fragment_size(self):
-        # default is 0: don'fragment. 
+        # default is 0: don'fragment.
         # subclasses may override this method
         self._max_send_frag = 0
 
@@ -339,7 +339,7 @@ class SMBTransport(DCERPCTransport):
         if isinstance(smb_connection, smb.SMB):
             # Backward compatibility hack, let's return a
             # SMBBackwardCompatibilityTransport instance
-            return SMBBackwardCompatibilityTransport(filename = filename, smb_server = smb_connection)            
+            return SMBBackwardCompatibilityTransport(filename = filename, smb_server = smb_connection)
         else:
             self.__smb_connection = smb_connection
 
@@ -358,7 +358,7 @@ class SMBTransport(DCERPCTransport):
 
     def connect(self):
         # Check if we have a smb connection already setup
-        if self.__smb_connection == 0:  
+        if self.__smb_connection == 0:
            self.setup_smb_connection()
            self.__smb_connection.login(self._username, self._password, self._domain, self._lmhash, self._nthash)
         self.__tid = self.__smb_connection.connectTree('IPC$')
@@ -456,7 +456,7 @@ class SMBBackwardCompatibilityTransport(DCERPCTransport):
 
     def connect(self):
         # Check if we have a smb connection already setup
-        if self.__smb_server == 0:  
+        if self.__smb_server == 0:
            self.setup_smb_server()
            if self.__smb_server.is_login_required():
               if self._password != '' or (self._password == '' and self._nthash == '' and self._lmhash == ''):

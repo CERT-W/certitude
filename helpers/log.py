@@ -16,11 +16,11 @@ def init():
         chemin = path.dirname(path.abspath(__file__))
     except:
         chemin = "" # relatif
-    
+
 
     logging.basicConfig(filename=path.join(chemin, '..', DOSSIER_LOG, 'certitude-core.log'), format=FORMAT_LOGS, filemode='a')
     formatter = logging.Formatter(FORMAT_LOGS)
-    
+
     if DEBUG:
         logging.getLogger('').setLevel(logging.DEBUG)
     else:
@@ -44,7 +44,7 @@ def init():
     handler_logscan = logging.FileHandler(path.join(chemin, '..', DOSSIER_LOG, 'scanners.log'))
     handler_logscan.setFormatter(formatter)
     loggingscan.addHandler(handler_logscan)
-    
+
     # IOCScanners
     loggingiocscan = logging.getLogger('iocscanner')
     handler_logiocscan = logging.FileHandler(path.join(chemin, '..', DOSSIER_LOG, 'iocscanners.log'))

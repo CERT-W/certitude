@@ -67,10 +67,10 @@ SMB2_GLOBAL_CAP_DIRECTORY_LEASING  = 0x20
 SMB2_GLOBAL_CAP_ENCRYPTION         = 0x40
 
 # Dialects
-SMB2_DIALECT_002      = 0x0202 
-SMB2_DIALECT_21       = 0x0210 
-SMB2_DIALECT_30       = 0x0300 
-SMB2_DIALECT_WILDCARD = 0x02FF 
+SMB2_DIALECT_002      = 0x0202
+SMB2_DIALECT_21       = 0x0210
+SMB2_DIALECT_30       = 0x0300
+SMB2_DIALECT_WILDCARD = 0x02FF
 
 # SMB2_SESSION_SETUP
 # Flags
@@ -79,7 +79,7 @@ SMB2_SESSION_FLAG_IS_GUEST       = 0x01
 SMB2_SESSION_FLAG_IS_NULL        = 0x02
 SMB2_SESSION_FLAG_ENCRYPT_DATA   = 0x04
 
-# SMB2_TREE_CONNECT 
+# SMB2_TREE_CONNECT
 # Types
 SMB2_SHARE_TYPE_DISK   = 0x1
 SMB2_SHARE_TYPE_PIPE   = 0x2
@@ -107,7 +107,7 @@ SMB2_SHARE_CAP_CONTINUOUS_AVAILABILITY     = 0x00000010
 SMB2_SHARE_CAP_SCALEOUT                    = 0x00000020
 SMB2_SHARE_CAP_CLUSTER                     = 0x00000040
 
-# SMB_CREATE 
+# SMB_CREATE
 # Oplocks
 SMB2_OPLOCK_LEVEL_NONE       = 0x00
 SMB2_OPLOCK_LEVEL_II         = 0x01
@@ -144,7 +144,7 @@ FILE_SHARE_WRITE        = 0x00000002
 FILE_SHARE_DELETE       = 0x00000004
 
 # Create Disposition
-FILE_SUPERSEDE          = 0x00000000 
+FILE_SUPERSEDE          = 0x00000000
 FILE_OPEN               = 0x00000001
 FILE_CREATE             = 0x00000002
 FILE_OPEN_IF            = 0x00000003
@@ -167,7 +167,7 @@ FILE_OPEN_BY_FILE_ID           = 0x00002000
 FILE_OPEN_FOR_BACKUP_INTENT    = 0x00004000
 FILE_NO_COMPRESSION            = 0x00008000
 FILE_RESERVE_OPFILTER          = 0x00100000
-FILE_OPEN_REPARSE_POINT        = 0x00200000 
+FILE_OPEN_REPARSE_POINT        = 0x00200000
 FILE_OPEN_NO_RECALL            = 0x00400000
 FILE_OPEN_FOR_FREE_SPACE_QUERY = 0x00800000
 
@@ -192,7 +192,7 @@ GENERIC_EXECUTE        = 0x20000000
 GENERIC_WRITE          = 0x40000000
 GENERIC_READ           = 0x80000000
 
-# Directory Access Mask 
+# Directory Access Mask
 FILE_LIST_DIRECTORY    = 0x00000001
 FILE_ADD_FILE          = 0x00000002
 FILE_ADD_SUBDIRECTORY  = 0x00000004
@@ -200,19 +200,19 @@ FILE_TRAVERSE          = 0x00000020
 FILE_DELETE_CHILD      = 0x00000040
 
 # Create Contexts
-SMB2_CREATE_EA_BUFFER                     = 0x45787441 
+SMB2_CREATE_EA_BUFFER                     = 0x45787441
 SMB2_CREATE_SD_BUFFER                     = 0x53656344
-SMB2_CREATE_DURABLE_HANDLE_REQUEST        = 0x44486e51 
-SMB2_CREATE_DURABLE_HANDLE_RECONNECT      = 0x44486e43 
-SMB2_CREATE_ALLOCATION_SIZE               = 0x416c5369 
-SMB2_CREATE_QUERY_MAXIMAL_ACCESS_REQUEST  = 0x4d784163 
-SMB2_CREATE_TIMEWARP_TOKEN                = 0x54577270 
-SMB2_CREATE_QUERY_ON_DISK_ID              = 0x51466964 
-SMB2_CREATE_REQUEST                       = 0x52714c73 
-SMB2_CREATE_REQUEST_LEASE_V2              = 0x52714c73 
-SMB2_CREATE_DURABLE_HANDLE_REQUEST_V2     = 0x44483251 
-SMB2_CREATE_DURABLE_HANDLE_RECONNECT_V2   = 0x44483243 
-SMB2_CREATE_APP_INSTANCE_ID               = 0x45BCA66AEFA7F74A9008FA462E144D74 
+SMB2_CREATE_DURABLE_HANDLE_REQUEST        = 0x44486e51
+SMB2_CREATE_DURABLE_HANDLE_RECONNECT      = 0x44486e43
+SMB2_CREATE_ALLOCATION_SIZE               = 0x416c5369
+SMB2_CREATE_QUERY_MAXIMAL_ACCESS_REQUEST  = 0x4d784163
+SMB2_CREATE_TIMEWARP_TOKEN                = 0x54577270
+SMB2_CREATE_QUERY_ON_DISK_ID              = 0x51466964
+SMB2_CREATE_REQUEST                       = 0x52714c73
+SMB2_CREATE_REQUEST_LEASE_V2              = 0x52714c73
+SMB2_CREATE_DURABLE_HANDLE_REQUEST_V2     = 0x44483251
+SMB2_CREATE_DURABLE_HANDLE_RECONNECT_V2   = 0x44483243
+SMB2_CREATE_APP_INSTANCE_ID               = 0x45BCA66AEFA7F74A9008FA462E144D74
 
 # Flags
 SMB2_CREATE_FLAG_REPARSEPOINT  = 0x1
@@ -298,7 +298,7 @@ RSS_CAPABLE  = 0x01
 RDMA_CAPABLE = 0x02
 
 # SMB2_QUERY_DIRECTORIES
-# Information Class 
+# Information Class
 FILE_DIRECTORY_INFORMATION         = 0x01
 FILE_FULL_DIRECTORY_INFORMATION    = 0x02
 FILEID_FULL_DIRECTORY_INFORMATION  = 0x26
@@ -335,7 +335,7 @@ FILE_NOTIFY_CHANGE_STREAM_WRITE  = 0x00000800
 FILE_ACTION_ADDED            = 0x00000001
 FILE_ACTION_REMOVED          = 0x00000002
 FILE_ACTION_MODIFIED         = 0x00000003
-FILE_ACTION_RENAMED_OLD_NAME = 0x00000004 
+FILE_ACTION_RENAMED_OLD_NAME = 0x00000004
 FILE_ACTION_RENAMED_NEW_NAME = 0x00000005
 
 # SMB2_QUERY_INFO
@@ -414,7 +414,7 @@ SMB2_ENCRYPTION_AES128_CCM = 0x0001
 class SMBPacketBase(Structure):
     def addCommand(self,command):
         # Pad to 8 bytes and put the offset of another SMBPacket
-        raise 'Implement This!' 
+        raise 'Implement This!'
 
     def isValidAnswer(self, status):
         if self['Status'] != status:
@@ -559,7 +559,7 @@ class SMB2Negotiate_Response(Structure):
         ('Buffer',':'),
     )
 
-# SMB2_SESSION_SETUP 
+# SMB2_SESSION_SETUP
 class SMB2SessionSetup(Structure):
     SIZE = 24
     structure = (
@@ -584,7 +584,7 @@ class SMB2SessionSetup(Structure):
 
     def getData(self):
         #self['AlignPad'] = '\x00' * ((8 - ((24 + SMB2_PACKET_SIZE) & 7)) & 7)
-        #self['SecurityBufferOffset'] = 24 + SMB2_PACKET_SIZE +len(self['AlignPad']) 
+        #self['SecurityBufferOffset'] = 24 + SMB2_PACKET_SIZE +len(self['AlignPad'])
         #self['SecurityBufferLength'] += len(self['AlignPad'])
         return Structure.getData(self)
 
@@ -606,7 +606,7 @@ class SMB2Logoff(Structure):
     structure = (
         ('StructureSize','<H=4'),
         ('Reserved','<H=0'),
-    ) 
+    )
 
 
 class SMB2Logoff_Response(Structure):
@@ -832,7 +832,7 @@ class SMB2_CREATE_QUERY_ON_DISK_ID(Structure):
     )
 
 # Todo: Add Classes for
-#SMB2_CREATE_SD_BUFFER                    
+#SMB2_CREATE_SD_BUFFER
 
 # SMB2_CLOSE
 class SMB2Close(Structure):
@@ -1099,7 +1099,7 @@ class NETWORK_RESILIENCY_REQUEST(Structure):
     structure = (
         ('Timeout','<L=0'),
         ('Reserved','<L=0'),
-    ) 
+    )
 
 class VALIDATE_NEGOTIATE_INFO(Structure):
     structure = (

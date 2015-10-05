@@ -33,7 +33,7 @@ SSL_CERT_FILE = 'ssl\\server.pem.cer'
 # ================
 # Port d'écoute de l'interface HTTP et de l'API
 PORT_API = 8080
-# ATTENTION, ne désactiver le SSL que lors de tests et couplé à une identification   
+# ATTENTION, ne désactiver le SSL que lors de tests et couplé à une identification
 # Backward compatibility
 API_SSL = USE_SSL
 

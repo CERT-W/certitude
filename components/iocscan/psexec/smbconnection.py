@@ -141,7 +141,7 @@ class SMBConnection():
 
         :return: None, raises a Session Error if error.
         """
-        try: 
+        try:
             return self._SMBConnection.login(user, password, domain, lmhash, nthash)
         except (smb.SessionError, smb3.SessionError), e:
             raise SessionError(e.get_error_code())
@@ -337,7 +337,7 @@ class SMBConnection():
         """
         removes a file
 
-        :param string shareName: a valid name for the share where the file is to be deleted 
+        :param string shareName: a valid name for the share where the file is to be deleted
         :param string pathName: the path name to remove
 
         :return: None, raises a SessionError exception if error.
@@ -499,7 +499,7 @@ class SMBConnection():
 	    if shareAccessMode is None:
 		# if share access mode is none, let's the underlying API deals with it
             	return self._SMBConnection.stor_file(shareName, pathName, callback)
-	    else: 
+	    else:
             	return self._SMBConnection.stor_file(shareName, pathName, callback, shareAccessMode)
         except (smb.SessionError, smb3.SessionError), e:
             raise SessionError(e.get_error_code())

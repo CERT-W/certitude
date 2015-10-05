@@ -7,8 +7,8 @@
 # $Id: serviceinstall.py 1074 2014-01-09 18:46:43Z bethus@gmail.com $
 #
 # Service Install Helper library used by psexec and smbrelayx
-# You provide an already established connection and an exefile 
-# (or class that mimics a file class) and this will install and 
+# You provide an already established connection and an exefile
+# (or class that mimics a file class) and this will install and
 # execute the service, and then uninstall (install(), uninstall().
 # It tries to take care as much as possible to leave everything clean.
 #
@@ -44,7 +44,7 @@ class ServiceInstall():
     def getShares(self):
         # Setup up a DCE SMBTransport with the connection already in place
         #print "[*] Requesting shares on %s....." % (self.connection.getRemoteHost())
-        try: 
+        try:
             self._rpctransport = transport.SMBTransport('','',filename = r'\srvsvc', smb_connection = self.connection)
             self._dce = dcerpc.DCERPC_v5(self._rpctransport)
             self._dce.connect()
@@ -78,7 +78,7 @@ class ServiceInstall():
 
         # Create the service
         command = '%s\\%s' % (path, self.__binary_service_name)
-        try: 
+        try:
             resp = self.rpcsvc.CreateServiceW(handle, self.__service_name.encode('utf-16le'), self.__service_name.encode('utf-16le'), command.encode('utf-16le'))
         except:
             print "[!] Error creating service %s on %s" % (self.__service_name, self.connection.getRemoteHost())
@@ -158,11 +158,11 @@ class ServiceInstall():
                     if serverName != '':
                        path = '\\\\%s\\%s' % (serverName, self.share)
                     else:
-                       path = '\\\\127.0.0.1\\' + self.share 
+                       path = '\\\\127.0.0.1\\' + self.share
                     service = self.createService(svcManager, self.share, path)
                     serviceCreated = True
                     if service != 0:
-                        parameters = [ '%s\\%s' % (path,self.__binary_service_name), '%s\\%s' % (path, '') ]            
+                        parameters = [ '%s\\%s' % (path,self.__binary_service_name), '%s\\%s' % (path, '') ]
                         # Start service
                         #print '[*] Starting service %s.....' % self.__service_name
                         try:
@@ -197,7 +197,7 @@ class ServiceInstall():
             svcManager = self.openSvcManager()
             if svcManager != 0:
                 resp = self.rpcsvc.OpenServiceA(svcManager, self.__service_name)
-                service = resp['ContextHandle'] 
+                service = resp['ContextHandle']
                 #print '[*] Stoping service %s.....' % self.__service_name
                 try:
                     self.rpcsvc.StopService(service)
@@ -210,7 +210,7 @@ class ServiceInstall():
             #print '[*] Removing file %s.....' % self.__binary_service_name
             self.connection.deleteFile(self.share, self.__binary_service_name)
         except Exception, e:
-            print "[!] Error performing the uninstallation, cleaning up" 
+            print "[!] Error performing the uninstallation, cleaning up"
             try:
                 self.rpcsvc.StopService(service)
             except:

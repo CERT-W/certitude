@@ -29,7 +29,7 @@ def getPsList():
         PID = process.pid
         PPID = process.ppid()
 
-        USERSID = '-'        
+        USERSID = '-'
         USERNAME = '-'
         try:
             USERNAME = process.username().encode('utf-8')
@@ -46,7 +46,7 @@ def getPsList():
                     SIDS[USERNAME] = r[1]
                 else:
                     SIDS[USERNAME] = '-'
-            USERSID = SIDS[USERNAME]    
+            USERSID = SIDS[USERNAME]
 
         except psutil.AccessDenied, e:
             pass

@@ -21,7 +21,7 @@ FILE_APPEND_DATA = smbconnection.FILE_APPEND_DATA
 # Logging options
 
 LEVEL_CRITICAL = logging.CRITICAL
-LEVEL_ERROR = logging.ERROR 
+LEVEL_ERROR = logging.ERROR
 LEVEL_WARNING = logging.WARNING
 LEVEL_INFO = logging.INFO
 LEVEL_INFODBG = logging.DEBUG

@@ -117,7 +117,7 @@ def analyse(fichier_resultat, tache):
         if hostname_long_path:
             hostname_long = str(hostname_long_path[0])
             hostname = hostname_long.split(".", 1)[0].upper()
-            
+
 
         domain = host.xpath(
             "hostscript/script[@id='smb-os-discovery']/elem[@key='domain']")
@@ -143,7 +143,7 @@ def analyse(fichier_resultat, tache):
             tache.date_debut = None
         else:
             tache.discovered = True
-            
+
     tache.reserved_discovery = False
     session.commit()
 

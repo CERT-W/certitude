@@ -8,11 +8,11 @@
 #
 # Partial C706.pdf + [MS-RPCE] implementation
 #
-# ToDo: 
+# ToDo:
 # [ ] Take out all the security provider stuff out of here (e.g. RPC_C_AUTHN_WINNT)
-#     and put it elsewhere. This will make the coder cleaner and easier to add 
+#     and put it elsewhere. This will make the coder cleaner and easier to add
 #     more SSP (e.g. NETLOGON)
-# 
+#
 
 from binascii import a2b_hex
 from Crypto.Cipher import ARC4
@@ -111,7 +111,7 @@ rpc_cont_def_result = {
 rpc_status_codes = {
     0x00000005L : 'rpc_s_access_denied',
     0x00000008L : 'Authentication type not recognized',
-    0x000006D8L : 'rpc_fault_cant_perform', 
+    0x000006D8L : 'rpc_fault_cant_perform',
     0x000006C6L : 'rpc_x_invalid_bound',                # the arrays bound are invalid
     0x000006E4L : 'rpc_s_cannot_support: The requested operation is not supported.',               # some operation is not supported
     0x000006F7L : 'rpc_x_bad_stub_data',                # the stub data is invalid, doesn't match with the IDL definition
@@ -193,7 +193,7 @@ class SEC_TRAILER(Structure):
 
 class MSRPCHeader(Structure):
     _SIZE = 16
-    commonHdr = ( 
+    commonHdr = (
         ('ver_major','B=5'),                              # 0
         ('ver_minor','B=0'),                              # 1
         ('type','B=0'),                                   # 2
@@ -204,9 +204,9 @@ class MSRPCHeader(Structure):
         ('call_id','<L=1'),                               # 12    <-- Common up to here (including this)
     )
 
-    structure = ( 
-        ('dataLen','_-pduData','self["frag_len"]-self["auth_len"]-self._SIZE-(8 if self["auth_len"] > 0 else 0)'),  
-        ('pduData',':'),                                
+    structure = (
+        ('dataLen','_-pduData','self["frag_len"]-self["auth_len"]-self._SIZE-(8 if self["auth_len"] > 0 else 0)'),
+        ('pduData',':'),
         ('_pad', '_-pad','(4 - ((self._SIZE + len(self["pduData"])) & 3) & 3)'),
         ('pad', ':'),
         ('_sec_trailer', '_-sec_trailer', '8 if self["auth_len"] > 0 else 0'),
@@ -220,7 +220,7 @@ class MSRPCHeader(Structure):
         if data is None:
             self['ver_major'] = 5
             self['ver_minor'] = 0
-            self['flags'] = MSRPC_FIRSTFRAG | MSRPC_LASTFRAG 
+            self['flags'] = MSRPC_FIRSTFRAG | MSRPC_LASTFRAG
             self['type'] = MSRPC_REQUEST
             self.__frag_len_set = 0
             self['auth_len'] = 0
@@ -235,8 +235,8 @@ class MSRPCHeader(Structure):
     def get_packet(self):
         if self['auth_data'] != '':
             self['auth_len'] = len(self['auth_data'])
-        # The sec_trailer structure MUST be 4-byte aligned with respect to 
-        # the beginning of the PDU. Padding octets MUST be used to align the 
+        # The sec_trailer structure MUST be 4-byte aligned with respect to
+        # the beginning of the PDU. Padding octets MUST be used to align the
         # sec_trailer structure if its natural beginning is not already 4-byte aligned
         ##self['pad'] = '\xAA' * (4 - ((self._SIZE + len(self['pduData'])) & 3) & 3)
 
@@ -244,7 +244,7 @@ class MSRPCHeader(Structure):
 
 class MSRPCRequestHeader(MSRPCHeader):
     _SIZE = 24
-    commonHdr = MSRPCHeader.commonHdr + ( 
+    commonHdr = MSRPCHeader.commonHdr + (
         ('alloc_hint','<L=0'),                            # 16
         ('ctx_id','<H=0'),                                # 20
         ('op_num','<H=0'),                                # 22
@@ -258,8 +258,8 @@ class MSRPCRequestHeader(MSRPCHeader):
 
 class MSRPCRespHeader(MSRPCHeader):
     _SIZE = 24
-    commonHdr = MSRPCHeader.commonHdr + ( 
-        ('alloc_hint','<L=0'),                          # 16   
+    commonHdr = MSRPCHeader.commonHdr + (
+        ('alloc_hint','<L=0'),                          # 16
         ('ctx_id','<H=0'),                              # 20
         ('cancel_count','<B=0'),                        # 22
         ('padding','<B=0'),                             # 23
@@ -273,7 +273,7 @@ class MSRPCRespHeader(MSRPCHeader):
 
 class MSRPCBind(Structure):
     _CTX_ITEM_LEN = len(CtxItem())
-    structure = ( 
+    structure = (
         ('max_tfrag','<H=4280'),
         ('max_rfrag','<H=4280'),
         ('assoc_group','<L=0'),
@@ -306,7 +306,7 @@ class MSRPCBind(Structure):
 class MSRPCBindAck(Structure):
     _SIZE = 26 # Up to SecondaryAddr
     _CTX_ITEM_LEN = len(CtxItemResult())
-    commonHdr = ( 
+    commonHdr = (
         ('ver_major','B=5'),                            # 0
         ('ver_minor','B=0'),                            # 1
         ('type','B=0'),                                 # 2
@@ -316,11 +316,11 @@ class MSRPCBindAck(Structure):
         ('auth_len','<H=0'),                            # 10
         ('call_id','<L=1'),                             # 12    <-- Common up to here (including this)
     )
-    structure = ( 
+    structure = (
         ('max_tfrag','<H=0'),
         ('max_rfrag','<H=0'),
         ('assoc_group','<L=0'),
-        ('SecondaryAddrLen','<H&SecondaryAddr'), 
+        ('SecondaryAddrLen','<H&SecondaryAddr'),
         ('SecondaryAddr','z'),                          # Optional if SecondaryAddrLen == 0
         ('PadLen','_-Pad','(4-((self["SecondaryAddrLen"]+self._SIZE) % 4))%4'),
         ('Pad',':'),
@@ -359,7 +359,7 @@ class MSRPCBindAck(Structure):
             data = data[len(item):]
 
 class MSRPCBindNak(Structure):
-    structure = ( 
+    structure = (
         ('RejectedReason','<H=0'),
         ('SupportedVersions',':'),
     )
@@ -429,7 +429,7 @@ class DCERPC_v5(DCERPC):
         self.__clientSealingHandle = ''
         self.__serverSealingKey = ''
         self.__serverSealingHandle = ''
-        self.__sequence = 0   
+        self.__sequence = 0
 
         self.__callid = 1
         self._ctx = 0
@@ -469,7 +469,7 @@ class DCERPC_v5(DCERPC):
         # Standard NDR Representation
         NDRSyntax   = ('8a885d04-1ceb-11c9-9fe8-08002b104860', '2.0')
         # NDR 64
-        NDR64Syntax = ('71710533-BEBA-4937-8319-B5DBEF9CCC36', '1.0') 
+        NDR64Syntax = ('71710533-BEBA-4937-8319-B5DBEF9CCC36', '1.0')
         #item['TransferSyntax']['Version'] = 1
         ctx = self._ctx
         for i in range(bogus_binds):
@@ -512,7 +512,7 @@ class DCERPC_v5(DCERPC):
             sec_trailer = SEC_TRAILER()
             sec_trailer['auth_type']   = self.__auth_type
             sec_trailer['auth_level']  = self.__auth_level
-            sec_trailer['auth_ctx_id'] = self._ctx + 79231 
+            sec_trailer['auth_ctx_id'] = self._ctx + 79231
 
             pad = (4 - (len(packet.get_packet()) % 4)) % 4
             if pad != 0:
@@ -596,14 +596,14 @@ class DCERPC_v5(DCERPC):
             sec_trailer = SEC_TRAILER()
             sec_trailer['auth_type'] = self.__auth_type
             sec_trailer['auth_level'] = self.__auth_level
-            sec_trailer['auth_ctx_id'] = self._ctx + 79231 
+            sec_trailer['auth_ctx_id'] = self._ctx + 79231
 
             if response is not None:
                 auth3 = MSRPCHeader()
                 auth3['type'] = MSRPC_AUTH3
-                # pad (4 bytes): Can be set to any arbitrary value when set and MUST be 
-                # ignored on receipt. The pad field MUST be immediately followed by a 
-                # sec_trailer structure whose layout, location, and alignment are as 
+                # pad (4 bytes): Can be set to any arbitrary value when set and MUST be
+                # ignored on receipt. The pad field MUST be immediately followed by a
+                # sec_trailer structure whose layout, location, and alignment are as
                 # specified in section 2.2.2.11
                 auth3['pduData'] = '    '
                 auth3['sec_trailer'] = sec_trailer
@@ -626,7 +626,7 @@ class DCERPC_v5(DCERPC):
             sec_trailer['auth_type'] = self.__auth_type
             sec_trailer['auth_level'] = self.__auth_level
             sec_trailer['auth_pad_len'] = 0
-            sec_trailer['auth_ctx_id'] = self._ctx + 79231 
+            sec_trailer['auth_ctx_id'] = self._ctx + 79231
 
             pad = (4 - (len(rpc_packet.get_packet()) % 4)) % 4
             if pad != 0:
@@ -642,37 +642,37 @@ class DCERPC_v5(DCERPC):
                     if self.__flags & ntlm.NTLMSSP_NTLM2_KEY:
                         # When NTLM2 is on, we sign the whole pdu, but encrypt just
                         # the data, not the dcerpc header. Weird..
-                        sealedMessage, signature =  ntlm.SEAL(self.__flags, 
-                               self.__clientSigningKey, 
-                               self.__clientSealingKey,  
-                               rpc_packet.get_packet()[:-16], 
-                               plain_data, 
-                               self.__sequence, 
+                        sealedMessage, signature =  ntlm.SEAL(self.__flags,
+                               self.__clientSigningKey,
+                               self.__clientSealingKey,
+                               rpc_packet.get_packet()[:-16],
+                               plain_data,
+                               self.__sequence,
                                self.__clientSealingHandle)
                     else:
-                        sealedMessage, signature =  ntlm.SEAL(self.__flags, 
-                               self.__clientSigningKey, 
-                               self.__clientSealingKey,  
-                               plain_data, 
-                               plain_data, 
-                               self.__sequence, 
+                        sealedMessage, signature =  ntlm.SEAL(self.__flags,
+                               self.__clientSigningKey,
+                               self.__clientSealingKey,
+                               plain_data,
+                               plain_data,
+                               self.__sequence,
                                self.__clientSealingHandle)
                     rpc_packet['pduData'] = sealedMessage
-            else: 
+            else:
                 if self.__auth_type == RPC_C_AUTHN_WINNT:
                     if self.__flags & ntlm.NTLMSSP_NTLM2_KEY:
-                        # Interesting thing.. with NTLM2, what is is signed is the 
+                        # Interesting thing.. with NTLM2, what is is signed is the
                         # whole PDU, not just the data
-                        signature =  ntlm.SIGN(self.__flags, 
-                               self.__clientSigningKey, 
-                               rpc_packet.get_packet()[:-16], 
-                               self.__sequence, 
+                        signature =  ntlm.SIGN(self.__flags,
+                               self.__clientSigningKey,
+                               rpc_packet.get_packet()[:-16],
+                               self.__sequence,
                                self.__clientSealingHandle)
                     else:
-                        signature =  ntlm.SIGN(self.__flags, 
-                               self.__clientSigningKey, 
-                               plain_data, 
-                               self.__sequence, 
+                        signature =  ntlm.SIGN(self.__flags,
+                               self.__clientSigningKey,
+                               plain_data,
+                               self.__sequence,
                                self.__clientSealingHandle)
                 elif self.__auth_type == RPC_C_AUTHN_NETLOGON:
                     from impacket.dcerpc import netlogon
@@ -726,11 +726,11 @@ class DCERPC_v5(DCERPC):
         forceRecv = 0
         retAnswer = ''
         while not finished:
-            # At least give me the MSRPCRespHeader, especially important for 
+            # At least give me the MSRPCRespHeader, especially important for
             # TCP/UDP Transports
             self.response_data = self._transport.recv(forceRecv, count=MSRPCRespHeader._SIZE)
             self.response_header = MSRPCRespHeader(self.response_data)
-            # Ok, there might be situation, especially with large packets, that 
+            # Ok, there might be situation, especially with large packets, that
             # the transport layer didn't send us the full packet's contents
             # So we gotta check we received it all
             while ( len(self.response_data) < self.response_header['frag_len'] ):
@@ -765,36 +765,36 @@ class DCERPC_v5(DCERPC):
                         if self.__flags & ntlm.NTLMSSP_NTLM2_KEY:
                             # TODO: FIX THIS, it's not calculating the signature well
                             # Since I'm not testing it we don't care... yet
-                            answer, signature =  ntlm.SEAL(self.__flags, 
-                                    self.__serverSigningKey, 
-                                    self.__serverSealingKey,  
-                                    answer, 
-                                    answer, 
-                                    self.__sequence, 
+                            answer, signature =  ntlm.SEAL(self.__flags,
+                                    self.__serverSigningKey,
+                                    self.__serverSealingKey,
+                                    answer,
+                                    answer,
+                                    self.__sequence,
                                     self.__serverSealingHandle)
                         else:
-                            answer, signature = ntlm.SEAL(self.__flags, 
-                                    self.__serverSigningKey, 
-                                    self.__serverSealingKey, 
-                                    answer, 
-                                    answer, 
-                                    self.__sequence, 
+                            answer, signature = ntlm.SEAL(self.__flags,
+                                    self.__serverSigningKey,
+                                    self.__serverSealingKey,
+                                    answer,
+                                    answer,
+                                    self.__sequence,
                                     self.__serverSealingHandle)
                             self.__sequence += 1
                 else:
                     if self.__auth_type == RPC_C_AUTHN_WINNT:
                         ntlmssp = auth_data[12:]
                         if self.__flags & ntlm.NTLMSSP_NTLM2_KEY:
-                            signature =  ntlm.SIGN(self.__flags, 
-                                    self.__serverSigningKey, 
-                                    answer, 
-                                    self.__sequence, 
+                            signature =  ntlm.SIGN(self.__flags,
+                                    self.__serverSigningKey,
+                                    answer,
+                                    self.__sequence,
                                     self.__serverSealingHandle)
                         else:
-                            signature = ntlm.SIGN(self.__flags, 
-                                    self.__serverSigningKey, 
-                                    ntlmssp, 
-                                    self.__sequence, 
+                            signature = ntlm.SIGN(self.__flags,
+                                    self.__serverSigningKey,
+                                    ntlmssp,
+                                    self.__sequence,
                                     self.__serverSealingHandle)
                             # Yes.. NTLM2 doesn't increment sequence when receiving
                             # the packet :P

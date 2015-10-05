@@ -175,7 +175,7 @@ def graph():
     pos = nx.graphviz_layout(G, root=0)
     ## Graphe circulaire
     #pos = nx.graphviz_layout(G, prog="twopi", root=0)
-    
+
     nx.draw(
         G,
         pos,

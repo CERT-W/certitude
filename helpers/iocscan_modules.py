@@ -4,23 +4,23 @@
 import components.iocscan.flatevaluators.result as FlatEvltResult
 import components.iocscan.logicevaluators.result as LogicEvltResult
 
-flatModuleList = [('ServiceItem','services'), 
-                    ('RegistryItem','registry'), 
-                    ('FileItem','files'), 
-                    ('ArpEntryItem','arp'), 
-                    ('DnsEntryItem','dns'), 
-                    ('PortItem','port'), 
-                    ('PrefetchItem','prefetch'), 
-                    ('ProcessItem','process'), 
+flatModuleList = [('ServiceItem','services'),
+                    ('RegistryItem','registry'),
+                    ('FileItem','files'),
+                    ('ArpEntryItem','arp'),
+                    ('DnsEntryItem','dns'),
+                    ('PortItem','port'),
+                    ('PrefetchItem','prefetch'),
+                    ('ProcessItem','process'),
                     ('MemoryItem','memory')]
-                    
-logicModuleList = [('ServiceItem','services'), 
-                    ('RegistryItem','registry'), 
-                    ('FileItem','files'), 
-                    ('ArpEntryItem','arp'), 
-                    ('DnsEntryItem','dns'), 
-                    ('PortItem','port'), 
-                    ('PrefetchItem','prefetch'), 
+
+logicModuleList = [('ServiceItem','services'),
+                    ('RegistryItem','registry'),
+                    ('FileItem','files'),
+                    ('ArpEntryItem','arp'),
+                    ('DnsEntryItem','dns'),
+                    ('PortItem','port'),
+                    ('PrefetchItem','prefetch'),
                     ('ProcessItem','process')]
 
 flatEvaluatorList = {}
