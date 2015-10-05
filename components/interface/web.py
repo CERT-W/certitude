@@ -7,6 +7,10 @@ CERT-Solucom cert@solucom.fr
 if __name__ == "__main__" and __package__ is None:
     raise Exception('Erreur : lancez le script depuis main.py et non directement')
 
+
+# Imports
+# Lots of them...
+#
 import os
 import re #Regular expressions 
 import subprocess, sys
@@ -45,6 +49,7 @@ import helpers.crypto as crypto
 import components.iocscan.openioc.openiocparser as openiocparser
 import helpers.iocscan_modules as ioc_modules
 
+# Will disappear soon
 results = []
 for module in MODULES_CONSO:
     results.append(getattr(
@@ -54,13 +59,10 @@ for module in MODULES_CONSO:
         ), 'Result'))
 
 
-try:
-    chemin = path.join(path.dirname(path.abspath(__file__)), '..', '..')
-except:
-    chemin = "" # relatif
-
+# Set up logger
 loggingserver = logging.getLogger('api')
 
+# Create database
 engine = create_engine(BASE_DE_DONNEES_QUEUE, echo=False)
 dbsession = sessionmaker(bind=engine)()
 
@@ -108,20 +110,24 @@ def login():
     error = ''
     if request.method == 'POST':
 
+        # Get user from username
         userList = dbsession.query(User).filter_by(username = request.form['username']).limit(1)
         matchingUser = userList.first()
 
+        # Check password
         if (matchingUser is not None) and (matchingUser.password == hashPassword(request.form['password'])):
+
+            # Since there is an "active" status...
             if matchingUser.active:
                 session['logged_in'] = True
                 session['user_id'] = matchingUser.id
-                
+
                 flash('Logged in')
                 return redirect(url_for('index'))
             else:
                 return render_template('session-login.html', error='User account is disabled')
         error = 'User might not exist or password is incorrect'
-                
+
     return render_template('session-login.html', errors=error)
 
 
@@ -134,6 +140,7 @@ def logout():
 
     # USER MANAGEMENT
 
+# Lists users
 @app.route('/users')
 def users():
     if 'logged_in' in session:
@@ -144,7 +151,7 @@ def users():
     else:
         return redirect(url_for('login'))
 
-
+# {En,Dis}ables an account
 @app.route('/users/<int:userid>/switchactive')
 def userSwitchActive(userid):
     if 'logged_in' in session:
@@ -163,6 +170,10 @@ def userSwitchActive(userid):
         return redirect(url_for('login'))
 
 
+# Add a new user
+# MASTER_KEY is encrypted for the new user
+# Clear text MASTER_KEY is retrieved using the current use's credentials
+#
 @app.route('/user/add', methods=['GET', 'POST'])
 def userAdd():
     if 'logged_in' in session:
@@ -174,43 +185,48 @@ def userAdd():
 
             user_password = request.form['user_password']
             user = dbsession.query(User).filter_by(id=session['user_id']).first()
-            
+
+            # Checks current user password
             if user is None or hashPassword(user_password) != user.password:
                 success = False
                 errors.append('Your password is incorrect')
-            
+
+            # Someone has messed with the database
             if success:
                 mk_cksum = dbsession.query(GlobalConfig).filter_by(key = 'master_key_checksum').first()
                 if not mk_cksum:
                     success = False
                     errors.append('Database is broken, please create a new one !')
-                    
+
             if success:
                 keyFromPassword = crypto.keyFromText(user_password)
                 MASTER_KEY = crypto.decrypt(user.encrypted_master_key, keyFromPassword)
-                
-                
+
+                # Someone changed the master key...
                 if checksum(MASTER_KEY) != mk_cksum.value:
                     errors.append('MASTER_KEY may have been altered')
                     del MASTER_KEY
                     success = False
-                
+
+            # Now check the new user password...
             if success:
                 password1, password2 = request.form['password'], request.form['password2']
                 if password1 != password2:
                     success = False
                     errors.append('New user passwords do not match')
-            
+
+            # ... including complexity
             if success:
                 if not verifyPassword(password1):
                     success = False
                     errors.append('Password is not complex enough (l > 12 and at least three character classes between lowercase, uppercase, numeric and special char)')
-                
+
+            # Encrypt the MASTER_KEY for the user
             if success:
                 keyFromPassword = crypto.keyFromText(password1)
                 emk = crypto.encrypt(MASTER_KEY, keyFromPassword)
-                del MASTER_KEY
-                
+                del MASTER_KEY # safer ?
+
                 u = User(
                         username = request.form['username'],
                         password = hashPassword(password1),
@@ -229,6 +245,7 @@ def userAdd():
         return redirect(url_for('login'))
 
 
+# Delete a user
 @app.route('/user/<int:userid>/delete',)
 def userDelete(userid):
     if 'logged_in' in session:
@@ -248,53 +265,47 @@ def userDelete(userid):
 
     # CONFIGURATION, IOCs & PROFILES MANAGEMENT
 
-# @app.route('/url',)
-# def fun():
-    # if 'logged_in' in session:
-        # return render_template('blank.html')
-    # else:
-        # return redirect(url_for('login'))
-        
-     
+
+# Configuration homepage     
 @app.route('/config',)
 def config():
     if 'logged_in' in session:
-    
+
         configuration_profiles = dbsession.query(ConfigurationProfile).order_by(ConfigurationProfile.name.asc())
         windows_credentials = dbsession.query(WindowsCredential).order_by(WindowsCredential.domain.asc(), WindowsCredential.login.asc())
         xmliocs = dbsession.query(XMLIOC).order_by(XMLIOC.date_added.desc())
-    
+
         ref = {}
         for xmlioc in xmliocs:
             ref[str(xmlioc.id)] = xmlioc.name + ' - ' + str(xmlioc.date_added)
-    
+
         iocdesclist = {}
         for cp in configuration_profiles:
             if len(cp.ioc_list)==0:
                 iocdesclist[cp.id] = ''
                 continue 
             iocdesclist[cp.id] = '||'.join([ref[str(id)] for id in cp.ioc_list.split(',')])
-    
+
         return render_template('config-main.html', xmliocs = xmliocs, windows_credentials = windows_credentials, configuration_profiles = configuration_profiles, iocdesclist = iocdesclist)
     else:
         return redirect(url_for('login'))
 
 
         # DELETIONS
-        
+
 @app.route('/config/wincredz/<int:wincredid>/delete')
 def wincredDelete(wincredid):
     if 'logged_in' in session:
-    
+
         wc = dbsession.query(WindowsCredential).filter_by(id=wincredid).first()
-        
+
         if wc is None:
             flash('This credential does not exist')
             return redirect(url_for('config'))
-            
+
         dbsession.delete(wc)
         dbsession.commit()
-    
+
         return redirect(url_for('config'))
     else:
         return redirect(url_for('login'))
@@ -303,16 +314,16 @@ def wincredDelete(wincredid):
 @app.route('/config/xmlioc/<int:xmliocid>/delete')        
 def xmliocDelete(xmliocid):
     if 'logged_in' in session:
-    
+
         xi = dbsession.query(XMLIOC).filter_by(id=xmliocid).first()
-        
+
         if xi is None:
             flash('This IOC does not exist')
             return redirect(url_for('config'))
-            
+
         dbsession.delete(xi)
         dbsession.commit()
-    
+
         return redirect(url_for('config'))
     else:
         return redirect(url_for('login'))
@@ -321,23 +332,26 @@ def xmliocDelete(xmliocid):
 @app.route('/config/profile/<int:profileid>/delete')        
 def profileDelete(profileid):
     if 'logged_in' in session:
-    
+
         p = dbsession.query(ConfigurationProfile).filter_by(id=profileid).first()
-        
+
         if p is None:
             flash('This profile does not exist')
             return redirect(url_for('config'))
-            
+
         dbsession.delete(p)
         dbsession.commit()
-    
+
         return redirect(url_for('config'))
     else:
         return redirect(url_for('login'))
 
 
         # ADDITIONS
-        
+
+# Adds a new credential
+# uses current user's password to decipher MASTER_KEY
+#        
 @app.route('/config/wincredz/add',methods=['GET','POST'])
 def wincredAdd():
     if 'logged_in' in session:
@@ -349,33 +363,38 @@ def wincredAdd():
 
             user_password = request.form['user_password']
             user = dbsession.query(User).filter_by(id=session['user_id']).first()
-            
+
+            # Password incorrect
             if user is None or hashPassword(user_password) != user.password:
                 success = False
                 errors.append('Your password is incorrect')
-            
+
+            # Database altered
             if success:
                 mk_cksum = dbsession.query(GlobalConfig).filter_by(key = 'master_key_checksum').first()
                 if not mk_cksum:
                     success = False
                     errors.append('Database is broken, please create a new one !')
-                    
+
+            # MASTER_KEY altered
             if success:
                 keyFromPassword = crypto.keyFromText(user_password)
                 MASTER_KEY = crypto.decrypt(user.encrypted_master_key, keyFromPassword)
-                
-                
+
+
                 if checksum(MASTER_KEY) != mk_cksum.value:
                     errors.append('MASTER_KEY may have been altered')
                     del MASTER_KEY
                     success = False
-                
+
+
             if success:
-            
+
                 account_password = request.form['password']
                 encrypted_account_password = crypto.encrypt(account_password, MASTER_KEY)
                 del MASTER_KEY
-                
+
+                # Encrypt Windows Credential's password
                 wc = WindowsCredential(
                         domain = request.form['domain'],
                         login = request.form['login'],
@@ -394,8 +413,8 @@ def wincredAdd():
                                             password = request.form['password'])
     else:
         return redirect(url_for('login'))
-        
-     
+
+
 @app.route('/config/xmlioc/add',methods=['GET','POST'])
 def xmliocAdd():
     if 'logged_in' in session:
@@ -406,11 +425,11 @@ def xmliocAdd():
             errors = []
 
             xml_content = request.files['xml_content'].stream.read()
-            
+
             xi = XMLIOC(
                     name=request.form['name'],
                     xml_content = base64.b64encode(xml_content))
-                    
+
             dbsession.add(xi)
             dbsession.commit()
 
@@ -421,14 +440,14 @@ def xmliocAdd():
                 return render_template('config-xmlioc-add.html', name = request.form['name'])
     else:
         return redirect(url_for('login'))
-        
-     
+
+
 @app.route('/config/profile/add',methods=['GET','POST'])
 def profileAdd():
     if 'logged_in' in session:
-    
+
         xi = dbsession.query(XMLIOC).order_by(XMLIOC.name.asc())
-    
+
         if request.method == 'GET':
             return render_template('config-profile-add.html', xmliocs = xi)
         else:
@@ -436,15 +455,15 @@ def profileAdd():
             errors = []
 
             hc = True if 'host_confidential' in request.form else False
-            
+
             cp = ConfigurationProfile(
                     name=request.form['name'],
                     host_confidential=hc,
                     ioc_list=','.join(request.form.getlist('ioc_list')))
-                    
+
             dbsession.add(cp)
             dbsession.commit()
-            
+
             if success:
                 return redirect(url_for('config'))
             else:
@@ -452,10 +471,10 @@ def profileAdd():
                 return render_template('config-profile-add.html', xmliocs = xi, name = request.form['name'], host_confidential = request.form['host_confidential'])
     else:
         return redirect(url_for('login'))
-        
-     
+
+
         # MISC. VIEWS
-        
+
 @app.route('/config/profile/<int:profileid>/popupview')
 def profilePopupView(profileid):
     if 'logged_in' in session:
@@ -470,16 +489,16 @@ def profilePopupView(profileid):
 def campaignvisualizations():
     if 'logged_in' in session:
         batches = dbsession.query(Batch).order_by(Batch.name.asc())
-        
+
         return render_template('campaign-visualizations.html', batches = batches)
     else:
         return redirect(url_for('login'))
-        
+
 @app.route('/campaignvisualizations/<int:batchid>')
 def campaignvisualizationbatch(batchid):
     if 'logged_in' in session:
         batch = dbsession.query(Batch).filter_by(id = batchid).first()
-        
+
         if batch is None:
             return redirect(url_for('campaignvisualizations'))
         else:
@@ -487,7 +506,7 @@ def campaignvisualizationbatch(batchid):
     else:
         return redirect(url_for('login'))
 
-        
+
 @app.route('/ioc/<int:iocid>')
 def iocvizu(iocid):
     if 'logged_in' in session:
@@ -496,14 +515,18 @@ def iocvizu(iocid):
         return redirect(url_for('login'))
 
 
+# IOC.json
+# File describing an IOC for previsualization in config
+#
 @app.route('/static/data/ioc.json/<int:iocid>')
 def iocjson(iocid):
     # if 'logged_in' in session:
-    
+
     response = ''
-    
+
+    # get the IOC
     ioc = dbsession.query(XMLIOC).filter_by(id = iocid).first()
-    
+
     if ioc is None:
         return Response(status=404, response='This IOC does not exist', content_type='text/plain')
 
@@ -516,11 +539,13 @@ def iocjson(iocid):
 
     content = base64.b64decode(ioc.xml_content)
 
+    # Parse it, filtering on allowed elements
     oip = openiocparser.OpenIOCParser(content, allowedElements, FLAT_MODE, fromString=True)
     oip.parse()
-    
+
+    # Get the tree
     tree = oip.getTree()
-    
+
     return Response(status=200, response=json.dumps(tree.json2(), indent=4), content_type='application/json')
     # else:
         # return redirect(url_for('login'))
@@ -533,43 +558,48 @@ def hostresult(hostid):
     else:
         return redirect(url_for('login'))
 
-        
+
+# HOST.json
+# Result of the scan on a specific host        
 @app.route('/static/data/host.json/<int:hostid>')
 def hostjson(hostid):
     # if 'logged_in' in session:
-    
+
     response = ''
-    
+
+    # Get the result
     task, result = dbsession.query(Task, Result).filter(Result.id==hostid).join(Result, Task.id == Result.tache_id).first()
     if task is None or result is None:
         return Response(status=404, response='This host does not exist', content_type='text/plain')
-        
+
+    # if not reachable, display error on the graph
     if not result.smbreachable:
         tab = {'name':task.ip, 'infected':True, 'children':[{'name':'This host could not be joined', 'infected': True}]}
         return Response(status=200, response=json.dumps(tab), content_type='application/json')
-    
+
+    # Get batch
     batch = dbsession.query(Batch).filter_by(id = task.batch_id).first()
+
+    # Then profile
     cp = dbsession.query(ConfigurationProfile).filter_by(id = batch.configuration_profile_id).first()
+
+    # The IOC list
     ioc_list = [int(e) for e in cp.ioc_list.split(',')]
-    
+
+    # And IOC detections
     ioc_detections = dbsession.query(IOCDetection).filter_by(result_id = result.id).all()
-    guids = {}
-    
+
+    # list of GUID per IOC
     guids = {i:[] for i in ioc_list}
-    
     for iocd in ioc_detections:
-        # if not iocd.xmlioc_id in guids.keys():
-            # guids[iocd.xmlioc_id] = []
-            
         guids[iocd.xmlioc_id].append(iocd.indicator_id)
-        
+
     tree = {'name':task.ip, 'children':[], 'infected': False}
-    
-    host_infected = False
+
     for iocid in ioc_list:
-    
+
         ioc = dbsession.query(XMLIOC).filter_by(id = iocid).first()
-    
+
         FLAT_MODE = (IOC_MODE == 'flat')
         allowedElements = {}
         evaluatorList = ioc_modules.flatEvaluatorList if FLAT_MODE else ioc_modules.logicEvaluatorList
@@ -579,107 +609,111 @@ def hostjson(hostid):
 
         content = base64.b64decode(ioc.xml_content)
 
+        # Parse IOC
         oip = openiocparser.OpenIOCParser(content, allowedElements, FLAT_MODE, fromString=True)
         oip.parse()
-        
+
+        # Build tree and infect it with the IOC detections
         tmp = oip.getTree()
         tmp.infect(guids[iocid])
         tmp = tmp.json2()
-        
+
         tmptree = {'name':ioc.name, 'children': [tmp], 'infected': tmp['infected']}
         tree['children'].append(tmptree)
+
+        # Get the infection up
         tree['infected'] |= tmp['infected']
-    
-    
+
+
     return Response(status=200, response=json.dumps(tree, indent=4), content_type='application/json')
-    
-        
+
+
 def getInfosFromXML(content):
 
     c = base64.b64decode(content)
     r = {'guids':{}, 'totalguids':0}
-    
+
     # <IndicatorItem id="b63cc380-b286-45b9-8009-a85d2be07236" condition="contains">
     #   <Context document="DnsEntryItem" search="DnsEntryItem/RecordName" type="mir"/>
     #   <Content type="string">outlookscansafe.net</Content>
-    
+
     # <IndicatorItem id="54d1f329-a4bc-4e24-b047-5786950d2109" condition="is">
     #   <Context document="DnsEntryItem" search="DnsEntryItem/RecordName" type="mir" />
     #   <Content type="string">dieideenwerkstatt.at</Content>
-    
+
     matches = re.findall(r'\<IndicatorItem[^>]+id="([^"]+)"[^>]*\>[^<]+\<Context ([^>]*)/\>[^<]+\<Content[^>]+\>([^<]*)\</Content\>', c)
-    
+
     for match in matches:
         guid, context, content = match
         search = re.findall(r'search="([^"]+)"', context)[0]
-        
+
         r['guids'][guid] = {'search':search, 'value':content}
         r['totalguids'] += 1
-    
+
     return r
-        
+
 @app.route('/static/data/results.csv/<int:batchid>')
 def resultscsv(batchid):
-    #if 'logged_in' in session:
-    response = 'Title:HostId,Title:Hostname-IP,Lookup:Success,Lookup:Subnet,Malware,Compromise'
-    
-    #Get Batch
-    batch = dbsession.query(Batch).filter_by(id = batchid).first()
-    if batch is None:
-        return Response(status=404)
-        
-    #Get all IOCs
-    cp = dbsession.query(ConfigurationProfile).filter_by(id = batch.configuration_profile_id).first()
-    ioc_list = [int(e) for e in cp.ioc_list.split(',')]
-    iocs = dbsession.query(XMLIOC).filter(XMLIOC.id.in_(ioc_list)).all()
-    
-    #Complete first line & assoc ioc.id => ioc
-    all_iocs = {}
-    for ioc in iocs:
-        all_iocs[ioc.id] = ioc
-        response += ',%s' % ioc.name
-    response += '\n'
-    
-    all_tasks_results = dbsession.query(Task, Result).filter(Task.batch_id==batchid).join(Result, Task.id == Result.tache_id).all()
+    if 'logged_in' in session:
+        response = 'Title:HostId,Title:Hostname-IP,Lookup:Success,Lookup:Subnet,Malware,Compromise'
 
-    # Get totak indicator items / IOC
-    total_by_ioc = {}
-    for ioc in iocs:
-        infos = getInfosFromXML(ioc.xml_content)
-        total_by_ioc[ioc.id] = infos['totalguids']
-        
-    
-    for task, result in all_tasks_results:
-        ioc_detections = dbsession.query(IOCDetection).filter_by(result_id = result.id).all()
-        
-        response += '%d,%s,%s,%s' % (result.id, task.ip, result.smbreachable, task.commentaire)
-        result_for_host = {e:0 for e in ioc_list}
-        
-        # Sum IOC detections
-        for ioc_detection in ioc_detections:
-            result_for_host[ioc_detection.xmlioc_id] += 1
-            
-        # Compute n in [0,1] = % of detection
-        result_for_host = {id: round(val*100./total_by_ioc[id])/100 for id,val in result_for_host.items()}
-        
-        # Get max
-        mval, mid = 0, -1
-        for id, val in result_for_host.items():
-            if val>mval:
-                mval, mid = val, id
-        
-        # Complete max compromise
-        mname = "None" if mid==-1 else all_iocs[mid].name
-        response += ',%s,%.2f' % (mname, mval)
-        
-        #Complete detection / IOC
-        for id in all_iocs:
-            response += ',%.2f' % result_for_host[id]
-        response += '\n'     
-    
-    return Response(status=200, response=response, content_type='text/plain')
-    #else:
-        #return redirect(url_for('login'))
+        #Get Batch
+        batch = dbsession.query(Batch).filter_by(id = batchid).first()
+        if batch is None:
+            return Response(status=404)
+
+        #Get all IOCs
+        cp = dbsession.query(ConfigurationProfile).filter_by(id = batch.configuration_profile_id).first()
+        ioc_list = [int(e) for e in cp.ioc_list.split(',')]
+        iocs = dbsession.query(XMLIOC).filter(XMLIOC.id.in_(ioc_list)).all()
+
+        #Complete first line & assoc ioc.id => ioc
+        all_iocs = {}
+        for ioc in iocs:
+            all_iocs[ioc.id] = ioc
+            response += ',%s' % ioc.name
+        response += '\n'
+
+        all_tasks_results = dbsession.query(Task, Result).filter(Task.batch_id==batchid).join(Result, Task.id == Result.tache_id).all()
+
+        # Get total indicator items / IOC
+        total_by_ioc = {}
+        for ioc in iocs:
+            infos = getInfosFromXML(ioc.xml_content)
+            total_by_ioc[ioc.id] = infos['totalguids']
+
+
+        for task, result in all_tasks_results:
+            ioc_detections = dbsession.query(IOCDetection).filter_by(result_id = result.id).all()
+
+            response += '%d,%s,%s,%s' % (result.id, task.ip, result.smbreachable, task.commentaire)
+            result_for_host = {e:0 for e in ioc_list}
+
+            # Sum IOC detections
+            for ioc_detection in ioc_detections:
+                result_for_host[ioc_detection.xmlioc_id] += 1
+
+            # Compute n in [0,1] = % of detection
+            result_for_host = {id: round(val*100./total_by_ioc[id])/100 for id,val in result_for_host.items()}
+
+            # Get max
+            mval, mid = 0, -1
+            for id, val in result_for_host.items():
+                if val>mval:
+                    mval, mid = val, id
+
+            # Complete max compromise
+            mname = "None" if mid==-1 else all_iocs[mid].name
+            response += ',%s,%.2f' % (mname, mval)
+
+            #Complete detection / IOC
+            for id in all_iocs:
+                response += ',%.2f' % result_for_host[id]
+            response += '\n'     
+
+        return Response(status=200, response=response, content_type='text/plain')
+    else:
+        return redirect(url_for('login'))
 
 
     # CAMPAIGN PLANIFICATION
@@ -687,35 +721,35 @@ def resultscsv(batchid):
 @app.route('/scan/', methods=['GET',])
 def scan():
     if 'logged_in' in session:
-    
+
         batches = dbsession.query(Batch).order_by(Batch.name.asc())
-        
+
         return render_template('scan-planification.html', batches = batches)
     else: #Not logged in
         return redirect(url_for('login'))
-        
-        
+
+
 @app.route('/scan/batch/add', methods=['GET','POST'])
 def scanbatchAdd():
     if 'logged_in' in session:
-    
+
         cp = dbsession.query(ConfigurationProfile).order_by(ConfigurationProfile.name.asc())
         wc = dbsession.query(WindowsCredential).order_by(WindowsCredential.domain.asc(), WindowsCredential.login.asc())
-    
+
         if request.method == 'GET':
             return render_template('scan-planification-batch-add.html', configuration_profiles = cp, windows_credentials = wc)
         else:
             success = True
             errors = []
-            
+
             batch = Batch(
                     name=request.form['name'],
                     configuration_profile_id = request.form['profile'],
                     windows_credential_id = request.form['credential'])
-                    
+
             dbsession.add(batch)
             dbsession.commit()
-            
+
             if success:
                 return redirect(url_for('scan'))
             else:
@@ -723,17 +757,17 @@ def scanbatchAdd():
                 return render_template('scan-planification-batch-add.html', configuration_profiles = cp, windows_credentials = wc)
     else: #Not logged in
         return redirect(url_for('login'))
-        
-    
+
+
 @app.route('/scan/batch/<int:batchid>', methods=['GET',])
 def scanbatch(batchid):
     if 'logged_in' in session:
-            
+
         batch = dbsession.query(Batch).filter_by(id=batchid).first()
         cp = dbsession.query(ConfigurationProfile).filter_by(id = batch.configuration_profile_id).first()
         wc = dbsession.query(WindowsCredential).filter_by(id = batch.windows_credential_id).first()
-        
-            
+
+
         return render_template('scan-planification-batch.html', batch = batch, configuration_profile = cp, windows_credential = wc)
     else: #Not logged in
         return redirect(url_for('login'))
@@ -741,42 +775,42 @@ def scanbatch(batchid):
 
     # API
 
-@app.route('/api/getdetections', methods=['GET',])
-def api_get_detections():
-    if 'logged_in' in session:
-        jsonData = {'code': 501}
-        statement = ('''
-                SELECT result.json_result
-                FROM host
-                    LEFT JOIN result
-                        ON host.host_id = result.host_id
-                WHERE ''', 
-                '''ORDER BY result.result_id DESC
-                LIMIT 1''')
-        if request.args.get('hostname', None) and len(request.args.get('hostname')) > 0:
-            hostname = request.args.get('hostname')
+# @app.route('/api/getdetections', methods=['GET',])
+# def api_get_detections():
+    # if 'logged_in' in session:
+        # jsonData = {'code': 501}
+        # statement = ('''
+                # SELECT result.json_result
+                # FROM host
+                    # LEFT JOIN result
+                        # ON host.host_id = result.host_id
+                # WHERE ''', 
+                # '''ORDER BY result.result_id DESC
+                # LIMIT 1''')
+        # if request.args.get('hostname', None) and len(request.args.get('hostname')) > 0:
+            # hostname = request.args.get('hostname')
 
-            con = sqlite3.connect(ANALYSIS_DB)
-            con.row_factory = sqlite3.Row
-            cur = con.cursor()
+            # con = sqlite3.connect(ANALYSIS_DB)
+            # con.row_factory = sqlite3.Row
+            # cur = con.cursor()
 
-            jsonData = cur.execute(statement[0] + 'host.host_ip = ?' + statement[1], (hostname,)).fetchone()
-            if not jsonData:
-                jsonData = {'code': 500}
-        elif request.args.get('id', None) and len(request.args.get('id')) > 0:
-            id = request.args.get('id')
+            # jsonData = cur.execute(statement[0] + 'host.host_ip = ?' + statement[1], (hostname,)).fetchone()
+            # if not jsonData:
+                # jsonData = {'code': 500}
+        # elif request.args.get('id', None) and len(request.args.get('id')) > 0:
+            # id = request.args.get('id')
 
-            con = sqlite3.connect(ANALYSIS_DB)
-            con.row_factory = sqlite3.Row
-            cur = con.cursor()
+            # con = sqlite3.connect(ANALYSIS_DB)
+            # con.row_factory = sqlite3.Row
+            # cur = con.cursor()
 
-            jsonData = cur.execute(statement[0] + 'host.host_id = ?' + statement[1], (id,)).fetchone()
-            if not jsonData:
-                jsonData = {'code': 500}
-        return Response(jsonData, mimetype='application/json')
+            # jsonData = cur.execute(statement[0] + 'host.host_id = ?' + statement[1], (id,)).fetchone()
+            # if not jsonData:
+                # jsonData = {'code': 500}
+        # return Response(jsonData, mimetype='application/json')
 
-    else: # Not logged in
-        return redirect(url_for('login'))
+    # else: # Not logged in
+        # return redirect(url_for('login'))
 
 
 @app.route('/api/scan/')
@@ -789,35 +823,35 @@ def api_old_interface():
                 param_list = param.get('ip_list')
                 param_ip = param.get('ip')
                 param_hostname = param.get('hostname')
-                
+
                 if param_list and len(param_list) > 0:
                     liste = param_list[0].replace('\r\n','\n')
                     ips = liste.split('\n')
                     ip = ips[0]
-                    
+
                     return ip,ips
                 else:                
                     if (param_ip and len(param_ip) > 0) or (param_hostname and len(param_hostname) > 0):
-                        # Détermination de l'IP à scanner
+                        # Compute the IP(s) to scan
                         if param_ip:
                             try:
                                 ip = param_ip[0]
                                 ips = IPNetwork(ip)
                             except:
-                                return renvoitErreurJSON(400, 'Erreur dans le format de l\'IP fournie')
+                                return renvoitErreurJSON(400, 'Error in IP address format')
                         elif param_hostname:
                             try:
                                 ip = resolve(param_hostname[0])
                                 ips = IPNetwork(ip)
                             except:
-                                return renvoitErreurJSON(400, 'Hote introuvable !')
+                                return renvoitErreurJSON(400, 'Host not found !')
                         return ip, ips
 
             def APIscan():
-                return 'API de scan\nUsage: /scan/?(ip=0.0.0.0|hostname=MACHINE)[&priority=10][&essais=1][&force=0][&batch=...][&commentaire=...]\n'
+                return 'Scan API\nUsage: /scan/?(ip=0.0.0.0|hostname=MACHINE)[&priority=10][&essais=1][&force=0][&batch=...][&commentaire=...]\n'
 
             def APIconsult():
-                return 'API de consultation\nUsage: /infos/?(ip=0.0.0.0|hostname=MACHINE)\n'
+                return 'Viewer API\nUsage: /infos/?(ip=0.0.0.0|hostname=MACHINE)\n'
 
             def renvoitErreurJSON(code, message):
                 reponse = {}
@@ -857,7 +891,7 @@ def api_old_interface():
 
             args = request.url.split('?', 1)
 
-            # Passage en revue des modules de visualisation
+            # Visualization modules
             vue_a_afficher = False
             modules_vues_autorises = []
             for module in MODULES_VUES:
@@ -881,15 +915,16 @@ def api_old_interface():
             if vue_a_afficher:
                 return Response(status=code if code > 0 else 200, response=content, content_type=content_type if len(content_type) > 0 else 'text/html')
 
-            if request.path == '/api/scan/': # Ajout d'une cible
+            # If not wrong, only this action is used now...
+            if request.path == '/api/scan/': # Add a target
                 loggingserver.debug('Scan request incoming ')
                 if len(args) > 1:
                     param = urlparse.parse_qs(args[1])
-                    # Détermination de l'IP à scanner
+                    # Target IP(s)
                     ip, ips = getCible(param)
                     if ip and ips and len(ips) > 0:
 
-                        # Détermination de la priorité
+                        # Priority
                         try:
                             priority = int(param['priority'][0])
                         except:
@@ -897,7 +932,7 @@ def api_old_interface():
                         if not priority > 0:
                             priority = 10
 
-                        # Détermination des essais à effectuer
+                        # Retries count (discovery & IOC)
                         essais = param.get('retries_discovery')
                         if essais and len(essais) > 0:
                             try:
@@ -917,27 +952,20 @@ def api_old_interface():
                                 retries_left_ioc = 1
                         else:
                             retries_left_ioc = 1
-                            
 
-
-                        # if len(filter(ip.startswith, PREFIXES_IP_GROUPE)) == 0:
-                            # return renvoitErreurJSON(400, 'Scan de cette IP non autorise ; l\'API est limitee aux IPs internes au Groupe')
-                        # if len(ips) > NOMBRE_MAX_IP_PAR_REQUETE:
-                            # return renvoitErreurJSON(400, 'Erreur, trop d\'IP fournies (max : ' + str(NOMBRE_MAX_IP_PAR_REQUETE) + ', equivalent a un /' + str(int(32 - log(NOMBRE_MAX_IP_PAR_REQUETE, 2))) + ')')
-                        # else:
                         subnet = param.get('subnet', None)
                         if subnet and subnet[0] > 0:
                             subnet = subnet[0]
                         batch = param.get('batch', None)
                         if batch and batch[0] > 0:
                             batch = batch[0]
-                            
+
                         reponse = {}
                         reponse['code'] = 200
-                        reponse['message'] = 'Scan de ' + str(len(ips)) + ' ip demande'
+                        reponse['message'] = 'Requested scan of ' + str(len(ips)) + ' IP addresses'
 
                         reponse['ips'] = {}
-                        
+
                         # Ajout à la queue...
                         for ip in ips:
                             actualise = False
@@ -945,20 +973,11 @@ def api_old_interface():
                             if not param.get('force'):
                                 limite_avant_nouvel_essai = datetime.datetime.now() - datetime.timedelta(0, SECONDES_POUR_RESCAN)
                                 if dbsession.query(Result).filter(Result.ip == str(ip), Result.finished >= limite_avant_nouvel_essai).count() > 0:
-                                    reponse['ips'][str(ip)] = 'deja scannee il y a peu'
+                                    reponse['ips'][str(ip)] = 'already scanned a few moments ago...'
                                     continue
                                 elif dbsession.query(Task).filter(Task.ip == str(ip), Task.batch_id == batch, Task.date_soumis >= limite_avant_nouvel_essai).count() > 0:
-                                    reponse['ips'][str(ip)] = 'deja soumise il y a peu'
+                                    reponse['ips'][str(ip)] = 'already requested a few moments ago'
                                     continue
-                                # if batch and len(batch) > 0:
-                                    # if dbsession.query(Task).join(Result).filter(Task.ip == str(ip), Task.batch == batch, Task.retries_left_discovery == 0).count() > 0:
-                                        # actualise = True
-                                    # elif dbsession.query(Task).join(Result).filter(Task.ip == str(ip), Task.batch == batch, Result.up == 1).count() > 0:
-                                        # reponse['ips'][str(ip)] = 'deja scannee dans le batch ' + batch
-                                        # continue
-                                    # elif dbsession.query(Task).filter(Task.ip == str(ip), Task.batch == batch).count() > 0:
-                                        # reponse['ips'][str(ip)] = 'en attente dans le batch ' + batch
-                                        # continue
 
                             try:
                                 ip_int = int(ip)                                    
@@ -967,9 +986,9 @@ def api_old_interface():
                                     ipn = IPNetwork(ip)
                                     ip_int = int(ipn[0])
                                 except Exception, e:
-                                    reponse['ips'][str(ip)] = 'IP non valide'
+                                    reponse['ips'][str(ip)] = 'invalid IP address'
                                     continue
-                                    
+
                             tache = Task(
                                 ip=str(ip),
                                 ip_int=ip_int,
@@ -985,12 +1004,12 @@ def api_old_interface():
                             )
                             dbsession.add(tache)
                             if batch and len(batch) > 0 and not actualise:
-                                reponse['ips'][str(ip)] = 'ajoutee au batch ' + batch + ' (' + str(retries_left_discovery) + ' essais discovery, ' + str(retries_left_ioc) + ' essais iocscan)'
+                                reponse['ips'][str(ip)] = 'added to batch ' + batch + ' (' + str(retries_left_discovery) + ' tries for discovery, ' + str(retries_left_ioc) + ' tries for iocscan)'
                             elif batch and len(batch) > 0 and actualise:
-                                reponse['ips'][str(ip)] = 'ajoutee au batch ' + batch + ' pour re-essai (' + str(retries_left_discovery) + ' essais discovery, ' + str(retries_left_ioc) + ' essais iocscan)'
+                                reponse['ips'][str(ip)] = 'added to batch ' + batch + ' for retry (' + str(retries_left_discovery) + ' tries for discovery, ' + str(retries_left_ioc) + ' tries for iocscan)'
                             else:
-                                reponse['ips'][str(ip)] = 'ajoutee dans la queue (' + str(retries_left_discovery) + ' essais discovery, ' + str(retries_left_ioc) + ' essais iocscan)'
-                            
+                                reponse['ips'][str(ip)] = 'added to queue (' + str(retries_left_discovery) + ' tries for discovery, ' + str(retries_left_ioc) + ' tries for iocscan)'
+
                             dbsession.commit()
                         return Response(
                             status=200,
@@ -1004,7 +1023,7 @@ def api_old_interface():
                         return APIscan()
                 else:
                     return APIscan()
-            elif request.path == '/api/infos/': # Lecture de la base
+            elif request.path == '/api/infos/': # Database read
                 if TYPE_AUTH == 'AD' and user not in ADMINS + DROIT_LECTURE:
                     abort(403)
                     return
@@ -1012,7 +1031,7 @@ def api_old_interface():
                 if len(args) > 1:
                     param = urlparse.parse_qs(args[1])
 
-                    # Détermination de l'IP à scanner
+                    # IP to scan
                     ip, ips = getCible(param)
                     if ip:
                         reponse = {}
@@ -1023,16 +1042,16 @@ def api_old_interface():
                         reponse['taches_en_cours'] = taches_en_cours.filter_by(consolidated=0, reserved_discovery=1).count()
                         reponse['taches_en_attente'] = taches_en_cours.filter_by(discovered=0, reserved_discovery=0).filter(Task.retries_left_discovery > 0).count()
 
-                        # Récupération des scans associés
+                        # Associated scans
                         resultats = dbsession.query(Result).filter_by(ip=ip)
                         for Result_model in results:
                             resultats = resultats.outerjoin(Result_model)
                         #print resultats.count()
                         if resultats.count() > 0:
-                            # On récupère le dernier résultat
+                            # Last result
                             resultat = resultats.order_by('resultats_id desc')[0]
 
-                            # Affinage affichage ports ouverts
+                            # Filtering open ports
                             ports_reverse = {}
                             for entry in PORTS:
                                 nom = entry[1] if len(entry) > 1 else ""
@@ -1049,7 +1068,7 @@ def api_old_interface():
                                     resultat.ports_ouverts[p.port] = ports_reverse[p.port]
                             reponse['dernier_scan'] = resultat
 
-                        # Conversion en JSON et envoi
+                        # JSON convert
                         return Response(
                             status=200,
                             response=json.dumps(
@@ -1105,11 +1124,11 @@ def progress():
 
 
     # SERVER LAUNCH
-    
+
 def run_server():
 
     context = None
-    
+
     if USE_SSL and os.path.isfile(SSL_KEY_FILE) and os.path.isfile(SSL_CERT_FILE):
         context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
         context.load_cert_chain(SSL_CERT_FILE, SSL_KEY_FILE)
