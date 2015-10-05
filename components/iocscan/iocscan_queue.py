@@ -29,8 +29,8 @@ from sqlalchemy import create_engine, or_, func
 from sqlalchemy.orm import sessionmaker
 from lxml import objectify
 
-from config import DOSSIER_LOG, BASE_DE_DONNEES_QUEUE, SLEEP, SECONDES_ENTRE_TENTATIVES, MAX_QUEUE_WARNING
-from config import IOC_LOGIN, IOC_PASSWORD, IOC_DOMAIN, IOC_MODE, IOC_CONFIDENTIAL, IOC_KEEPFILES
+from config import DOSSIER_LOG, BASE_DE_DONNEES_QUEUE, SLEEP, SECONDES_ENTRE_TENTATIVES
+from config import IOC_MODE, IOC_KEEPFILES
 from config import IOC_CONFIDENTIAL_DIRECTORY, IOC_COMPONENT_ROOT, IOC_TEMP_DIR
 from helpers.queue_models import Task
 from helpers.results_models import Result, IOCDetection
@@ -379,7 +379,7 @@ def demarrer_scanner(hWaitStop=None, batch=None):
             # Get targets to be scanned
             # and that are not currently being scanned
             # or that don't have any retry left
-            queue = session.query(Task).filter_by(discovered=True, iocscanned=False, reserved_ioc=False).filter(Task.retries_left_ioc > 0)
+            queue = session.query(Task).filter_by(iocscanned=False, reserved_ioc=False).filter(Task.retries_left_ioc > 0)
 
             # Batch filtering
             if batchquery is not None:

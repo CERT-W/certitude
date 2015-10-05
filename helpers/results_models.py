@@ -22,41 +22,8 @@ class Result(Base):
     up = Column(Boolean)
     blocked = Column(Boolean)
     ip = Column(String)
-    elapsed = Column(String)
-    mac = Column(String)
-    mac_vendor = Column(String)
     hostname = Column(String)
-    hostname_long = Column(String)
-    os = Column(String)
-    domaine = Column(String)
-    os_simple = Column(String)
-    tal = Column(String)
-    zone = Column(String)
-    typeequipement = Column(String)
-    categorie = Column(String)
     smbreachable = Column(Boolean)
-
-
-class Port(Base):
-    __tablename__ = 'ports'
-
-    id = Column(Integer, primary_key=True)
-    result_id = Column(Integer, ForeignKey('resultats.id'))
-    resultat = relationship(Result,
-        backref='ports',)
-
-    port = Column(Integer)
-    status = Column(String)
-
-
-class Link(Base):
-    __tablename__ = 'links'
-
-    id = Column(Integer, primary_key=True)
-    result_id = Column(Integer, ForeignKey('resultats.id'))
-
-    ipaddr1 = Column(String)
-    ipaddr2 = Column(String)
 
 
 class IOCDetection(Base):

@@ -39,23 +39,12 @@ def init():
     handler_logapi.setFormatter(formatter)
     loggingserver.addHandler(handler_logapi)
 
-    # Scanners
-    loggingscan = logging.getLogger('scanner')
-    handler_logscan = logging.FileHandler(path.join(chemin, '..', DOSSIER_LOG, 'scanners.log'))
-    handler_logscan.setFormatter(formatter)
-    loggingscan.addHandler(handler_logscan)
-
     # IOCScanners
     loggingiocscan = logging.getLogger('iocscanner')
     handler_logiocscan = logging.FileHandler(path.join(chemin, '..', DOSSIER_LOG, 'iocscanners.log'))
     handler_logiocscan.setFormatter(formatter)
     loggingiocscan.addHandler(handler_logiocscan)
 
-    # Consolidation
-    loggingconso = logging.getLogger('conso')
-    handler_logconso = logging.FileHandler(path.join(chemin, '..', DOSSIER_LOG, 'conso.log'))
-    handler_logconso.setFormatter(formatter)
-    loggingconso.addHandler(handler_logconso)
 
 
     # Double sortie vers la console aussi

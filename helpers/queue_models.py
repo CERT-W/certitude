@@ -25,13 +25,10 @@ class Task(Base):
     date_debut = Column(DateTime)
 
     # From here, in english
-    discovered = Column(Boolean, default=False)
     iocscanned = Column(Boolean, default=False)
     priority = Column(Integer)
-    reserved_discovery = Column(Boolean, default=False)
     reserved_ioc = Column(Boolean, default=False)
     consolidated = Column(Boolean, default=False)
-    retries_left_discovery = Column(Integer, default=0)
     retries_left_ioc = Column(Integer, default=0)
     last_retry = Column(DateTime)
 

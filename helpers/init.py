@@ -8,8 +8,8 @@ CERT-Solucom cert@solucom.fr
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from config import BASE_DE_DONNEES_QUEUE, MODULES_CONSO
-from results_models import Result, Port, Link, IOCDetection
+from config import BASE_DE_DONNEES_QUEUE
+from results_models import Result, IOCDetection
 from queue_models import Task
 from misc_models import User, GlobalConfig, XMLIOC, ConfigurationProfile, WindowsCredential
 from helpers import hashPassword, checksum
@@ -20,8 +20,6 @@ import getpass
 engine = create_engine(BASE_DE_DONNEES_QUEUE, echo=False)
 
 Result.metadata.create_all(engine)
-Port.metadata.create_all(engine)
-Link.metadata.create_all(engine)
 Task.metadata.create_all(engine)
 IOCDetection.metadata.create_all(engine)
 User.metadata.create_all(engine)

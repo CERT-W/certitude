@@ -39,25 +39,15 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from netaddr import IPNetwork
 
-from config import IOC_MODE, DEBUG, PORT_API, CREDENTIALS_INTERFACE, USE_SSL, SSL_KEY_FILE, SSL_CERT_FILE, BASE_DE_DONNEES_QUEUE, PORTS, PREFIXES_IP_GROUPE, NOMBRE_MAX_IP_PAR_REQUETE, SECONDES_POUR_RESCAN, ADRESSE_STATIC, MODULES_CONSO, MODULES_VUES, TACHES_NOMBRE
+from config import IOC_MODE, DEBUG, USE_SSL, SSL_KEY_FILE, SSL_CERT_FILE, BASE_DE_DONNEES_QUEUE, SECONDES_POUR_RESCAN
 from helpers.queue_models import Task
 from helpers.results_models import Result, IOCDetection
 from helpers.misc_models import User, ConfigurationProfile, WindowsCredential, XMLIOC, Batch, GlobalConfig
-from helpers.helpers import resolve, hashPassword, checksum, verifyPassword
+from helpers.helpers import hashPassword, checksum, verifyPassword
 import helpers.crypto as crypto
 
 import components.iocscan.openioc.openiocparser as openiocparser
 import helpers.iocscan_modules as ioc_modules
-
-# Will disappear soon
-results = []
-for module in MODULES_CONSO:
-    results.append(getattr(
-        __import__(
-            "modules." + module + '.models',
-            fromlist=['Result']
-        ), 'Result'))
-
 
 # Set up logger
 loggingserver = logging.getLogger('api')
@@ -71,7 +61,6 @@ dbsession = sessionmaker(bind=engine)()
 
 app = Flask(__name__, static_folder = 'static')
 app.secret_key = os.urandom(24)
-app.config.update(CREDENTIALS_INTERFACE)
 
 app.config['UPLOAD_FOLDER'] = 'upload'
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 5*60
@@ -773,322 +762,125 @@ def scanbatch(batchid):
         return redirect(url_for('login'))
 
 
-    # API
-
-# @app.route('/api/getdetections', methods=['GET',])
-# def api_get_detections():
-    # if 'logged_in' in session:
-        # jsonData = {'code': 501}
-        # statement = ('''
-                # SELECT result.json_result
-                # FROM host
-                    # LEFT JOIN result
-                        # ON host.host_id = result.host_id
-                # WHERE ''',
-                # '''ORDER BY result.result_id DESC
-                # LIMIT 1''')
-        # if request.args.get('hostname', None) and len(request.args.get('hostname')) > 0:
-            # hostname = request.args.get('hostname')
-
-            # con = sqlite3.connect(ANALYSIS_DB)
-            # con.row_factory = sqlite3.Row
-            # cur = con.cursor()
-
-            # jsonData = cur.execute(statement[0] + 'host.host_ip = ?' + statement[1], (hostname,)).fetchone()
-            # if not jsonData:
-                # jsonData = {'code': 500}
-        # elif request.args.get('id', None) and len(request.args.get('id')) > 0:
-            # id = request.args.get('id')
-
-            # con = sqlite3.connect(ANALYSIS_DB)
-            # con.row_factory = sqlite3.Row
-            # cur = con.cursor()
-
-            # jsonData = cur.execute(statement[0] + 'host.host_id = ?' + statement[1], (id,)).fetchone()
-            # if not jsonData:
-                # jsonData = {'code': 500}
-        # return Response(jsonData, mimetype='application/json')
-
-    # else: # Not logged in
-        # return redirect(url_for('login'))
-
 
 @app.route('/api/scan/')
-@app.route('/api/infos/')
 def api_old_interface():
     if 'logged_in' in session:
-        try:
-            user = None
-            def getCible(param):
-                param_list = param.get('ip_list')
-                param_ip = param.get('ip')
-                param_hostname = param.get('hostname')
+    
+        def getCible(param):
+            param_list = param.get('ip_list')
+            param_ip = param.get('ip')
+            param_hostname = param.get('hostname')
 
-                if param_list and len(param_list) > 0:
-                    liste = param_list[0].replace('\r\n','\n')
-                    ips = liste.split('\n')
-                    ip = ips[0]
+            if param_list and len(param_list) > 0:
+                liste = param_list[0].replace('\r\n','\n')
+                ips = liste.split('\n')
+                ip = ips[0]
+                
+            elif param_ip and len(param_ip) > 0:
+                ips = param_ip
+                ip = ips[0]
+            elif param_hostname and len(param_hostname)>0:
+                ips = param_hostname
+                ip = ips[0]
 
-                    return ip,ips
+            return ip,ips
+
+        loggingserver.debug('Scan request incoming ')
+        args = request.url.split('?', 1)
+        if len(args) > 1:
+            param = urlparse.parse_qs(args[1])
+            # Target IP(s)
+            ip, ips = getCible(param)
+            if ip and ips and len(ips) > 0:
+
+                # Priority
+                try:
+                    priority = int(param['priority'][0])
+                except:
+                    priority = 10
+                if not priority > 0:
+                    priority = 10
+
+                # Retries count (IOC)
+                essais = param.get('retries_ioc')
+                if essais and len(essais) > 0:
+                    try:
+                        assert 0 < int(essais[0]) <= 10000
+                        retries_left_ioc = int(essais[0])
+                    except:
+                        retries_left_ioc = 1
                 else:
-                    if (param_ip and len(param_ip) > 0) or (param_hostname and len(param_hostname) > 0):
-                        # Compute the IP(s) to scan
-                        if param_ip:
-                            try:
-                                ip = param_ip[0]
-                                ips = IPNetwork(ip)
-                            except:
-                                return renvoitErreurJSON(400, 'Error in IP address format')
-                        elif param_hostname:
-                            try:
-                                ip = resolve(param_hostname[0])
-                                ips = IPNetwork(ip)
-                            except:
-                                return renvoitErreurJSON(400, 'Host not found !')
-                        return ip, ips
+                    retries_left_ioc = 1
 
-            def APIscan():
-                return 'Scan API\nUsage: /scan/?(ip=0.0.0.0|hostname=MACHINE)[&priority=10][&essais=1][&force=0][&batch=...][&commentaire=...]\n'
+                subnet = param.get('subnet', None)
+                if subnet and subnet[0] > 0:
+                    subnet = subnet[0]
+                batch = param.get('batch', None)
+                if batch and batch[0] > 0:
+                    batch = batch[0]
 
-            def APIconsult():
-                return 'Viewer API\nUsage: /infos/?(ip=0.0.0.0|hostname=MACHINE)\n'
-
-            def renvoitErreurJSON(code, message):
                 reponse = {}
-                reponse['code'] = code
-                reponse['message'] = message
-                return Response(status=200, response=json.dumps(reponse, indent=4), content_type='application/json')
+                reponse['code'] = 200
+                reponse['message'] = 'Requested scan of ' + str(len(ips)) + ' IP addresses'
 
-            def new_alchemy_encoder():
-                _visited_objs = []
-                class AlchemyEncoder(json.JSONEncoder):
-                    def default(self, obj):
-                        if isinstance(obj.__class__, DeclarativeMeta):
-                            # don't re-visit self
-                            if obj in _visited_objs:
-                                return None
-                            _visited_objs.append(obj)
+                reponse['ips'] = {}
 
-                            # an SQLAlchemy class
-                            fields = {}
-                            avoid = ['id', 'resultat', 'result_id', 'ports']
-                            for field in [x for x in dir(obj) if not x.startswith('_') and x != 'metadata' and x not in avoid]:
-                                data = obj.__getattribute__(field)
-                                if type(data) == datetime.datetime:
-                                    data = str(data)
-                                try:
-                                    data = unicode(data.decode('cp850'))
-                                except:
-                                    pass
-                                fields[field] = data
-                            # a json-encodable dict
-                            return fields
+                # Ajout à la queue...
+                for ip in ips:
+                    actualise = False
 
-                        return json.JSONEncoder.default(self, obj)
-                return AlchemyEncoder
+                    if not param.get('force'):
+                        limite_avant_nouvel_essai = datetime.datetime.now() - datetime.timedelta(0, SECONDES_POUR_RESCAN)
+                        if dbsession.query(Result).filter(Result.ip == str(ip), Result.finished >= limite_avant_nouvel_essai).count() > 0:
+                            reponse['ips'][str(ip)] = 'already scanned a few moments ago...'
+                            continue
+                        elif dbsession.query(Task).filter(Task.ip == str(ip), Task.batch_id == batch, Task.date_soumis >= limite_avant_nouvel_essai).count() > 0:
+                            reponse['ips'][str(ip)] = 'already requested a few moments ago'
+                            continue
 
-            loggingserver.info('Request from ' + request.remote_addr + ' with path ' + request.url)
-
-            args = request.url.split('?', 1)
-
-            # Visualization modules
-            vue_a_afficher = False
-            modules_vues_autorises = []
-            for module in MODULES_VUES:
-                autorisation = False
-                module_vue = __import__(
-                        "modules." + module + '.main',
-                        fromlist=['name_in_path', 'has_right', 'view']
-                    )
-                autorisation = True
-                modules_vues_autorises.append(module_vue)
-                if request.path == '/vue/' + module_vue.name_in_path + '/':
-                    if not autorisation:
-                        abort(403)
-                        loggingserver.warning('Cannot display view ' + module + ' for user ' + user)
-                        return
-                    [code, content_type, content] = module_vue.view(user, args, loggingserver, dbsession)
-                    loggingserver.info('View module ' + module + ' displayed to user ' + user + ' with return code ' + str(code))
-                    vue_a_afficher = True
-                    break
-
-            if vue_a_afficher:
-                return Response(status=code if code > 0 else 200, response=content, content_type=content_type if len(content_type) > 0 else 'text/html')
-
-            # If not wrong, only this action is used now...
-            if request.path == '/api/scan/': # Add a target
-                loggingserver.debug('Scan request incoming ')
-                if len(args) > 1:
-                    param = urlparse.parse_qs(args[1])
-                    # Target IP(s)
-                    ip, ips = getCible(param)
-                    if ip and ips and len(ips) > 0:
-
-                        # Priority
+                    try:
+                        ip_int = int(ip)
+                    except ValueError,e:
                         try:
-                            priority = int(param['priority'][0])
-                        except:
-                            priority = 10
-                        if not priority > 0:
-                            priority = 10
+                            ipn = IPNetwork(ip)
+                            ip_int = int(ipn[0])
+                        except Exception, e:
+                            reponse['ips'][str(ip)] = 'invalid IP address'
+                            continue
 
-                        # Retries count (discovery & IOC)
-                        essais = param.get('retries_discovery')
-                        if essais and len(essais) > 0:
-                            try:
-                                assert 0 < int(essais[0]) <= 10000
-                                retries_left_discovery = int(essais[0])
-                            except:
-                                retries_left_discovery = 1
-                        else:
-                            retries_left_discovery = 1
-
-                        essais = param.get('retries_ioc')
-                        if essais and len(essais) > 0:
-                            try:
-                                assert 0 < int(essais[0]) <= 10000
-                                retries_left_ioc = int(essais[0])
-                            except:
-                                retries_left_ioc = 1
-                        else:
-                            retries_left_ioc = 1
-
-                        subnet = param.get('subnet', None)
-                        if subnet and subnet[0] > 0:
-                            subnet = subnet[0]
-                        batch = param.get('batch', None)
-                        if batch and batch[0] > 0:
-                            batch = batch[0]
-
-                        reponse = {}
-                        reponse['code'] = 200
-                        reponse['message'] = 'Requested scan of ' + str(len(ips)) + ' IP addresses'
-
-                        reponse['ips'] = {}
-
-                        # Ajout à la queue...
-                        for ip in ips:
-                            actualise = False
-
-                            if not param.get('force'):
-                                limite_avant_nouvel_essai = datetime.datetime.now() - datetime.timedelta(0, SECONDES_POUR_RESCAN)
-                                if dbsession.query(Result).filter(Result.ip == str(ip), Result.finished >= limite_avant_nouvel_essai).count() > 0:
-                                    reponse['ips'][str(ip)] = 'already scanned a few moments ago...'
-                                    continue
-                                elif dbsession.query(Task).filter(Task.ip == str(ip), Task.batch_id == batch, Task.date_soumis >= limite_avant_nouvel_essai).count() > 0:
-                                    reponse['ips'][str(ip)] = 'already requested a few moments ago'
-                                    continue
-
-                            try:
-                                ip_int = int(ip)
-                            except ValueError,e:
-                                try:
-                                    ipn = IPNetwork(ip)
-                                    ip_int = int(ipn[0])
-                                except Exception, e:
-                                    reponse['ips'][str(ip)] = 'invalid IP address'
-                                    continue
-
-                            tache = Task(
-                                ip=str(ip),
-                                ip_int=ip_int,
-                                priority=priority,
-                                discovered=True, # change this when you want to reintegrate NMAP
-                                reserved_discovery=False,
-                                reserved_ioc=False,
-                                ip_demandeur=request.remote_addr,
-                                retries_left_discovery=retries_left_discovery,
-                                retries_left_ioc=retries_left_ioc,
-                                commentaire=subnet,
-                                batch_id=batch
-                            )
-                            dbsession.add(tache)
-                            if batch and len(batch) > 0 and not actualise:
-                                reponse['ips'][str(ip)] = 'added to batch ' + batch + ' (' + str(retries_left_discovery) + ' tries for discovery, ' + str(retries_left_ioc) + ' tries for iocscan)'
-                            elif batch and len(batch) > 0 and actualise:
-                                reponse['ips'][str(ip)] = 'added to batch ' + batch + ' for retry (' + str(retries_left_discovery) + ' tries for discovery, ' + str(retries_left_ioc) + ' tries for iocscan)'
-                            else:
-                                reponse['ips'][str(ip)] = 'added to queue (' + str(retries_left_discovery) + ' tries for discovery, ' + str(retries_left_ioc) + ' tries for iocscan)'
-
-                            dbsession.commit()
-                        return Response(
-                            status=200,
-                            response=json.dumps(
-                                reponse,
-                                indent=4
-                            ),
-                            content_type='application/json'
-                        )
+                    tache = Task(
+                        ip=str(ip),
+                        ip_int=ip_int,
+                        priority=priority,
+                        reserved_ioc=False,
+                        ip_demandeur=request.remote_addr,
+                        retries_left_ioc=retries_left_ioc,
+                        commentaire=subnet,
+                        batch_id=batch
+                    )
+                    dbsession.add(tache)
+                    if batch and len(batch) > 0 and not actualise:
+                        reponse['ips'][str(ip)] = 'added to batch ' + batch + ' (' + str(retries_left_ioc) + ' tries for iocscan)'
+                    elif batch and len(batch) > 0 and actualise:
+                        reponse['ips'][str(ip)] = 'added to batch ' + batch + ' for retry (' + str(retries_left_ioc) + ' tries for iocscan)'
                     else:
-                        return APIscan()
-                else:
-                    return APIscan()
-            elif request.path == '/api/infos/': # Database read
-                if TYPE_AUTH == 'AD' and user not in ADMINS + DROIT_LECTURE:
-                    abort(403)
-                    return
+                        reponse['ips'][str(ip)] = 'added to queue (' + str(retries_left_ioc) + ' tries for iocscan)'
 
-                if len(args) > 1:
-                    param = urlparse.parse_qs(args[1])
+                    dbsession.commit()
+                return Response(
+                    status=200,
+                    response=json.dumps(
+                        reponse,
+                        indent=4
+                    ),
+                    content_type='application/json'
+                )
+            else:
+                return APIscan()
+        else:
+            return APIscan()
 
-                    # IP to scan
-                    ip, ips = getCible(param)
-                    if ip:
-                        reponse = {}
-
-                        taches_en_cours = dbsession.query(Task).filter_by(ip=ip)
-                        reponse['taches_terminees'] = taches_en_cours.filter_by(discovered=1, consolidated=1).count()
-                        reponse['taches_abandonnees'] = taches_en_cours.filter_by(discovered=0, retries_left_discovery=0).count()
-                        reponse['taches_en_cours'] = taches_en_cours.filter_by(consolidated=0, reserved_discovery=1).count()
-                        reponse['taches_en_attente'] = taches_en_cours.filter_by(discovered=0, reserved_discovery=0).filter(Task.retries_left_discovery > 0).count()
-
-                        # Associated scans
-                        resultats = dbsession.query(Result).filter_by(ip=ip)
-                        for Result_model in results:
-                            resultats = resultats.outerjoin(Result_model)
-                        #print resultats.count()
-                        if resultats.count() > 0:
-                            # Last result
-                            resultat = resultats.order_by('resultats_id desc')[0]
-
-                            # Filtering open ports
-                            ports_reverse = {}
-                            for entry in PORTS:
-                                nom = entry[1] if len(entry) > 1 else ""
-                                for entry_uniq in str(entry[0]).split(','):
-                                    p = entry_uniq.split('-')
-                                    if len(p)>1 and p[0] >= 0 and p[1] > p[0]:
-                                        for port in xrange(int(p[0]), int(p[1])+1):
-                                            ports_reverse[int(port)] = nom
-                                    else:
-                                        ports_reverse[int(entry_uniq)] = nom
-                            resultat.ports_ouverts = {}
-                            for p in resultat.ports:
-                                if p.status == 'open':
-                                    resultat.ports_ouverts[p.port] = ports_reverse[p.port]
-                            reponse['dernier_scan'] = resultat
-
-                        # JSON convert
-                        return Response(
-                            status=200,
-                            response=json.dumps(
-                                reponse,
-                                cls=new_alchemy_encoder(),
-                                check_circular=False,
-                                indent=4
-                            ),
-                            content_type='application/json'
-                        )
-                    else:
-                        return APIconsult()
-                else:
-                    return APIconsult()
-
-        except Exception, e:
-            loggingserver.error('Unknown error !', exc_info=True)
-            dbsession.rollback()
-            time.sleep(1)
-            abort(500)
     else: # Not logged in
         return redirect(url_for('login'))
 
@@ -1106,17 +898,13 @@ def progress():
             'batch_id',
             'date_soumis',
             'date_debut',
-            'discovered',
             'iocscanned',
             'priority',
-            'reserved_discovery',
             'reserved_ioc',
-            'consolidated',
             'retries_left_ioc',
-            'retries_left_discovery',
             'last_retry',
         )
-        tasks = dbsession.query(Task).order_by('id DESC').limit(TACHES_NOMBRE)
+        tasks = dbsession.query(Task).order_by(Task.id.desc()).limit(50)
         tasks_data = [[getattr(t, h) for h in headers] for t in tasks]
         return render_template('scan-progress.html', headers=headers, tasks_data=tasks_data)
     else: #Not logged in

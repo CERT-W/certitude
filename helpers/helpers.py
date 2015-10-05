@@ -4,75 +4,13 @@
 CERTitude: The Seeker of IOC
 CERT-Solucom cert@solucom.fr
 """
-from socket import gethostbyname
-from socket import gaierror
+
 import logging
-
 from hashlib import sha256, sha512
-import dns.resolver
-import dns
-
-from config import SERVEURS_DNS, INTERFACE_HASH_SALT
+from config import INTERFACE_HASH_SALT
 
 
 loggingserver = logging.getLogger('api')
-
-my_resolver = dns.resolver.Resolver()
-my_resolver.timeout = 1
-
-def resolve(name):
-    # Serveurs DNS de la conf
-    ip = None
-    for d in SERVEURS_DNS:
-        loggingserver.debug('Résolution de ' + name + ' auprès de ' + d)
-        my_resolver.nameservers = [gethostbyname(d),]
-        try:
-            # requête type DNS
-            answer = my_resolver.query(name, 'A')
-            ips = [a.address for a in answer]
-            loggingserver.debug('IPs trouvée : ' + str(ips))
-            ip = answer[0].address
-        except (dns.resolver.NXDOMAIN, dns.resolver.NoNameservers):
-            try:
-                # requête type WINS
-                answer = my_resolver.query(name + '.wins.MACHINE.fr', 'A')
-                ips = [a.address for a in answer]
-                loggingserver.debug('IPs trouvée : ' + str(ips))
-                ip = answer[0].address
-            except (dns.resolver.NXDOMAIN, dns.resolver.NoNameservers):
-                pass # domaine inexistant
-    # Serveur DNS de l'hôte
-    if not ip:
-        try:
-            ip = gethostbyname(name)
-        except gaierror:
-            pass
-    if ip:
-        loggingserver.debug('IP renvoyée : ' + str(ip))
-        return ip
-    else:
-        return None
-
-def row2dict(row):
-    d = {}
-    for column in row.__table__.columns:
-        d[column.name] = getattr(row, column.name)
-
-    return d
-
-def uniq(seq):
-    # dédoublonnage
-    # http://www.peterbe.com/plog/uniqifiers-benchmark
-    # order preserving
-    def idfun(x): return x
-    seen = {}
-    result = []
-    for item in seq:
-       marker = idfun(item)
-       if marker in seen: continue
-       seen[marker] = 1
-       result.append(item)
-    return result
 
 def hashPassword(password):
     s = sha256()
