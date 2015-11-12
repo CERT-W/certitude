@@ -11,6 +11,7 @@
     <h2 class="form-signin-heading">Please sign in</h2>
     <input name='username' type="text" class="input-block-level" placeholder="Email address">
     <input name='password' type="password" class="input-block-level" placeholder="Password">
+    <input name='{{ csrf_token_name }}' type="hidden" value="{{ csrf_token() }}">
     <label class="checkbox">
       <input name='rememberme' type="checkbox" value="remember-me"> Remember me
     </label>

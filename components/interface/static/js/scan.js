@@ -6,8 +6,9 @@ $(function () {
         $('.form-infos').submit();
     };
     $('form.ajax').on('submit', function(event) {
+
         target = $(this).prop('action');
-        data = $(this).serialize();
+        data = $(this).serializeArray();
         $('#loading_gif').show();
         $('#result').load(target, data, function(responseText) {
             data = JSON.parse(responseText);

@@ -38,6 +38,7 @@
             <td colspan=2 class="center"><input class="btn btn-primary" type="submit" value="Create batch" /></td>
         </tr>
     </table>
+    <input name='{{ csrf_token_name }}' type="hidden" value="{{ csrf_token() }}">
 </form>
 
 

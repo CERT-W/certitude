@@ -8,7 +8,7 @@
 <br/><pre class="error">{{ errors }}</pre>
 {% endif %}
 
-<form action="/api/scan/" method="GET" class="ajax form-scan">
+<form action="{{ url_for('api_json') }}" method="POST" class="ajax form-scan">
     <input type="hidden" name="batch" value="{{ batch.id }}" />
     <table style="margin-top:20px;">	
         <tr>
@@ -76,6 +76,7 @@
             </td>
         </tr>
     </table>
+    <input name='{{ csrf_token_name }}' type="hidden" value="{{ csrf_token() }}">
 </form>
     <img src="{{ url_for('static', filename='img/loading.gif') }}" id="loading_gif" style="display: none;" />
     <div id="result"></div>

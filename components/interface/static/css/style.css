@@ -216,4 +216,5 @@ textarea.list
     height:390px;
 }
 
-.error { color:red }
+.error { color:red; }
+.inline { display:inline; }

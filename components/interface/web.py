@@ -57,10 +57,39 @@ engine = create_engine(BASE_DE_DONNEES_QUEUE, echo=False)
 dbsession = sessionmaker(bind=engine)()
 
 
+def genCSRFToken():
+    return base64.b64encode(crypto.randomBytes(20)).replace('=','').replace('+','').replace('/','')
+
+CSRF_TOKEN_INDEX='_csrft'
+STATIC_ENDPOINT='static'
+
+def getCSRFToken():
+    # basic_url = url_for(endpoint, **values)
+
+    # if endpoint==STATIC_ENDPOINT:
+        # return basic_url
+
+    # token_index = ASYNC_TOKEN_INDEX if endpoint in ASYNC_ENDPOINTS else CSRF_TOKEN_INDEX
+
+    # if not token_index in session:
+        # session[token_index] = genCSRFToken()
+
+    # couple = '%s=%s' % (token_index, session[token_index])
+    # url = basic_url+'&'+couple if '?' in basic_url else basic_url+'?'+couple
+
+    if not CSRF_TOKEN_INDEX in session:
+        session[CSRF_TOKEN_INDEX] = genCSRFToken()
+
+    return session[CSRF_TOKEN_INDEX]
+
+
 ''' APPLICATION CONFIGURATION '''
 
-app = Flask(__name__, static_folder = 'static')
+app = Flask(__name__, static_folder = STATIC_ENDPOINT)
 app.secret_key = os.urandom(24)
+
+app.jinja_env.globals['csrf_token'] = getCSRFToken
+app.jinja_env.globals['csrf_token_name'] = CSRF_TOKEN_INDEX
 
 app.config['UPLOAD_FOLDER'] = 'upload'
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 5*60
@@ -73,10 +102,24 @@ RESULT_FILE_HEADER = 'Title:HostId,Title:Hostname,Lookup:Success,Lookup:IP,Looku
 
 IP_REGEX = '(([0-9]|[1-9][0-9]|1[0-9]{2}|2([0-4][0-9]|5[0-5]))\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2([0-4][0-9]|5[0-5]))'
 
+
+# ''' CSRF Protection '''
+
+@app.before_request
+def csrf_protect():
+    if request.method=='POST':
+        token = None if CSRF_TOKEN_INDEX not in session else session[CSRF_TOKEN_INDEX]
+        arg = request.form.get(CSRF_TOKEN_INDEX)
+
+        if not token or token != arg:
+            print 'Received %s, expected %s' % (arg, token)
+            abort(400)
+
+
+
         #-############################-#
         # Pages routing and controlers #
         #-############################-#
-
 
     # INDEX
 
@@ -84,9 +127,9 @@ IP_REGEX = '(([0-9]|[1-9][0-9]|1[0-9]{2}|2([0-4][0-9]|5[0-5]))\.){3}([0-9]|[1-9]
 def index():
 
     if 'logged_in' in session:
-        ret=redirect(url_for('scan'))
+        ret=redirect(app.jinja_env.globals['url_for']('scan'))
     else:
-        ret=redirect(url_for('login'))
+        ret=redirect(app.jinja_env.globals['url_for']('login'))
 
     return ret
 
@@ -112,7 +155,7 @@ def login():
                 session['user_id'] = matchingUser.id
 
                 flash('Logged in')
-                return redirect(url_for('index'))
+                return redirect(app.jinja_env.globals['url_for']('index'))
             else:
                 return render_template('session-login.html', error='User account is disabled')
         error = 'User might not exist or password is incorrect'
@@ -124,7 +167,7 @@ def login():
 def logout():
     session.pop('logged_in', None)
     flash('Logged out')
-    return redirect(url_for('index'))
+    return redirect(app.jinja_env.globals['url_for']('index'))
 
 
     # USER MANAGEMENT
@@ -138,7 +181,7 @@ def users():
 
         return render_template('user-list.html', users = allUsers)
     else:
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 # {En,Dis}ables an account
 @app.route('/users/<int:userid>/switchactive')
@@ -149,14 +192,14 @@ def userSwitchActive(userid):
 
         if u is None:
             flash('This user does not exist')
-            return redirect(url_for('users'))
+            return redirect(app.jinja_env.globals['url_for']('users'))
 
         u.active = not u.active
         dbsession.commit()
 
-        return redirect(url_for('users'))
+        return redirect(app.jinja_env.globals['url_for']('users'))
     else:
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 
 # Add a new user
@@ -229,29 +272,29 @@ def userAdd():
                 dbsession.commit()
 
             if success:
-                return redirect(url_for('users'))
+                return redirect(app.jinja_env.globals['url_for']('users'))
             else:
                 return render_template('user-add.html', username=request.form['username'], email=request.form['email'], errors='\n'.join(errors))
     else:
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 
 # Delete a user
-@app.route('/user/<int:userid>/delete',)
+@app.route('/user/<int:userid>/delete', methods=['POST'])
 def userDelete(userid):
     if 'logged_in' in session:
         u = dbsession.query(User).filter_by(id = userid).first()
 
         if u is None:
             flash('This user does not exist')
-            return redirect(url_for('users'))
+            return redirect(app.jinja_env.globals['url_for']('users'))
 
         dbsession.delete(u)
         dbsession.commit()
 
-        return redirect(url_for('users'))
+        return redirect(app.jinja_env.globals['url_for']('users'))
     else:
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 
     # CONFIGURATION, IOCs & PROFILES MANAGEMENT
@@ -279,12 +322,12 @@ def config():
 
         return render_template('config-main.html', xmliocs = xmliocs, windows_credentials = windows_credentials, configuration_profiles = configuration_profiles, iocdesclist = iocdesclist)
     else:
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 
         # DELETIONS
 
-@app.route('/config/wincredz/<int:wincredid>/delete')
+@app.route('/config/wincredz/<int:wincredid>/delete', methods=['POST'])
 def wincredDelete(wincredid):
     if 'logged_in' in session:
 
@@ -292,17 +335,17 @@ def wincredDelete(wincredid):
 
         if wc is None:
             flash('This credential does not exist')
-            return redirect(url_for('config'))
+            return redirect(app.jinja_env.globals['url_for']('config'))
 
         dbsession.delete(wc)
         dbsession.commit()
 
-        return redirect(url_for('config'))
+        return redirect(app.jinja_env.globals['url_for']('config'))
     else:
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 
-@app.route('/config/xmlioc/<int:xmliocid>/delete')
+@app.route('/config/xmlioc/<int:xmliocid>/delete', methods=['POST'])
 def xmliocDelete(xmliocid):
     if 'logged_in' in session:
 
@@ -310,17 +353,17 @@ def xmliocDelete(xmliocid):
 
         if xi is None:
             flash('This IOC does not exist')
-            return redirect(url_for('config'))
+            return redirect(app.jinja_env.globals['url_for']('config'))
 
         dbsession.delete(xi)
         dbsession.commit()
 
-        return redirect(url_for('config'))
+        return redirect(app.jinja_env.globals['url_for']('config'))
     else:
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 
-@app.route('/config/profile/<int:profileid>/delete')
+@app.route('/config/profile/<int:profileid>/delete', methods=['POST'])
 def profileDelete(profileid):
     if 'logged_in' in session:
 
@@ -328,14 +371,14 @@ def profileDelete(profileid):
 
         if p is None:
             flash('This profile does not exist')
-            return redirect(url_for('config'))
+            return redirect(app.jinja_env.globals['url_for']('config'))
 
         dbsession.delete(p)
         dbsession.commit()
 
-        return redirect(url_for('config'))
+        return redirect(app.jinja_env.globals['url_for']('config'))
     else:
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 
         # ADDITIONS
@@ -395,7 +438,7 @@ def wincredAdd():
                 dbsession.commit()
 
             if success:
-                return redirect(url_for('config'))
+                return redirect(app.jinja_env.globals['url_for']('config'))
             else:
                 return render_template('config-wincred-add.html',
                                             errors = '\n'.join(errors),
@@ -403,7 +446,7 @@ def wincredAdd():
                                             login = request.form['login'],
                                             password = request.form['password'])
     else:
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 
 @app.route('/config/xmlioc/add',methods=['GET','POST'])
@@ -425,12 +468,12 @@ def xmliocAdd():
             dbsession.commit()
 
             if success:
-                return redirect(url_for('config'))
+                return redirect(app.jinja_env.globals['url_for']('config'))
             else:
                 flash('\n'.join(errors))
                 return render_template('config-xmlioc-add.html', name = request.form['name'])
     else:
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 
 @app.route('/config/profile/add',methods=['GET','POST'])
@@ -456,12 +499,12 @@ def profileAdd():
             dbsession.commit()
 
             if success:
-                return redirect(url_for('config'))
+                return redirect(app.jinja_env.globals['url_for']('config'))
             else:
                 flash('\n'.join(errors))
                 return render_template('config-profile-add.html', xmliocs = xi, name = request.form['name'], host_confidential = request.form['host_confidential'])
     else:
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 
         # MISC. VIEWS
@@ -471,7 +514,7 @@ def profilePopupView(profileid):
     if 'logged_in' in session:
         return render_template('config-profile-popupview.html')
     else:
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 
         # CAMPAIGN RESULTS
@@ -483,7 +526,7 @@ def campaignvisualizations():
 
         return render_template('campaign-visualizations.html', batches = batches)
     else:
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 @app.route('/campaignvisualizations/<int:batchid>')
 def campaignvisualizationbatch(batchid):
@@ -491,11 +534,11 @@ def campaignvisualizationbatch(batchid):
         batch = dbsession.query(Batch).filter_by(id = batchid).first()
 
         if batch is None:
-            return redirect(url_for('campaignvisualizations'))
+            return redirect(app.jinja_env.globals['url_for']('campaignvisualizations'))
         else:
             return render_template('campaign-visualizations-batch.html', batch = batch)
     else:
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 
 @app.route('/ioc/<int:iocid>')
@@ -503,7 +546,7 @@ def iocvizu(iocid):
     if 'logged_in' in session:
         return render_template('ioc-vizualisation.html', iocid = iocid)
     else:
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 
 # IOC.json
@@ -539,7 +582,7 @@ def iocjson(iocid):
 
     return Response(status=200, response=json.dumps(tree.json2(), indent=4), content_type='application/json')
     # else:
-        # return redirect(url_for('login'))
+        # return redirect(app.jinja_env.globals['url_for']('login'))
 
 
 @app.route('/host-result/<int:hostid>')
@@ -547,7 +590,7 @@ def hostresult(hostid):
     if 'logged_in' in session:
         return render_template('host-result-vizualisation.html', hostid = hostid)
     else:
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 
 # HOST.json
@@ -704,7 +747,7 @@ def resultscsv(batchid):
 
         return Response(status=200, response=response, content_type='text/plain')
     else:
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 
     # CAMPAIGN PLANIFICATION
@@ -717,7 +760,7 @@ def scan():
 
         return render_template('scan-planification.html', batches = batches)
     else: #Not logged in
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 
 @app.route('/scan/batch/add', methods=['GET','POST'])
@@ -742,12 +785,12 @@ def scanbatchAdd():
             dbsession.commit()
 
             if success:
-                return redirect(url_for('scan'))
+                return redirect(app.jinja_env.globals['url_for']('scan'))
             else:
                 flash('\n'.join(errors))
                 return render_template('scan-planification-batch-add.html', configuration_profiles = cp, windows_credentials = wc)
     else: #Not logged in
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 
 @app.route('/scan/batch/<int:batchid>', methods=['GET',])
@@ -761,130 +804,136 @@ def scanbatch(batchid):
 
         return render_template('scan-planification-batch.html', batch = batch, configuration_profile = cp, windows_credential = wc)
     else: #Not logged in
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 
 
-@app.route('/api/scan/')
-def api_old_interface():
+@app.route('/api/scan/', methods=['POST'])
+def api_json():
     if 'logged_in' in session:
-    
+
         def getCible(param):
-            param_list = param.get('ip_list')
-            param_ip = param.get('ip')
-            param_hostname = param.get('hostname')
+            param_list = param.get('ip_list', None)
+            param_ip = param.get('ip', None)
+            param_hostname = param.get('hostname', None)
 
-            if param_list and len(param_list) > 0:
-                liste = param_list[0].replace('\r\n','\n')
+            list = []
+
+            if param_list is not None and param_list!='':
+                liste = param_list.replace('\r\n','\n')
                 ips = liste.split('\n')
-                ip = ips[0]
-                
-            elif param_ip and len(param_ip) > 0:
-                ips = param_ip
-                ip = ips[0]
-            elif param_hostname and len(param_hostname)>0:
-                ips = param_hostname
-                ip = ips[0]
+                ips = [(e,'ip') for e in ips]
+                list+=ips
 
-            return ip,ips
+            if param_ip is not None and param_ip!='':
+                list.append((param_ip, 'ip'))
+
+            if param_hostname is not None and param_hostname!='' :
+                list.append((param_hostname, 'host'))
+
+            return list
 
         loggingserver.debug('Scan request incoming ')
-        args = request.url.split('?', 1)
-        if len(args) > 1:
-            param = urlparse.parse_qs(args[1])
-            # Target IP(s)
-            ip, ips = getCible(param)
-            if ip and ips and len(ips) > 0:
+        param = request.form
 
-                # Priority
+        # param = urlparse.parse_qs(args[1])
+        # Target IP(s)
+        ip_list = getCible(param)
+        if len(ip_list) > 0:
+
+            # Priority
+            try:
+                priority = int(param.get('priority'))
+            except:
+                priority = 10
+            if not priority > 0:
+                priority = 10
+
+            # Retries count (IOC)
+            essais = param.get('retries_ioc')
+            if essais is not None > 0:
                 try:
-                    priority = int(param['priority'][0])
+                    assert 0 < int(essais) <= 10000
+                    retries_left_ioc = int(essais)
                 except:
-                    priority = 10
-                if not priority > 0:
-                    priority = 10
-
-                # Retries count (IOC)
-                essais = param.get('retries_ioc')
-                if essais and len(essais) > 0:
-                    try:
-                        assert 0 < int(essais[0]) <= 10000
-                        retries_left_ioc = int(essais[0])
-                    except:
-                        retries_left_ioc = 1
-                else:
                     retries_left_ioc = 1
+            else:
+                retries_left_ioc = 1
 
-                subnet = param.get('subnet', None)
-                if subnet and subnet[0] > 0:
-                    subnet = subnet[0]
-                batch = param.get('batch', None)
-                if batch and batch[0] > 0:
-                    batch = batch[0]
+            subnetp = param.get('subnet', None)
+            if subnetp  is not None:
+                subnet = subnetp
 
-                reponse = {}
-                reponse['code'] = 200
-                reponse['message'] = 'Requested scan of ' + str(len(ips)) + ' IP addresses'
+            batchp = param.get('batch', None)
+            if batchp is not None:
+                batch = batchp
 
-                reponse['ips'] = {}
+            reponse = {}
+            reponse['code'] = 200
+            reponse['message'] = 'Requested scan of ' + str(len(ip_list)) + ' IP addresses'
 
-                # Ajout à la queue...
-                for ip in ips:
-                    actualise = False
+            reponse['ips'] = {}
 
-                    if not param.get('force'):
-                        limite_avant_nouvel_essai = datetime.datetime.now() - datetime.timedelta(0, SECONDES_POUR_RESCAN)
-                        if dbsession.query(Result).filter(Result.ip == str(ip), Result.finished >= limite_avant_nouvel_essai).count() > 0:
-                            reponse['ips'][str(ip)] = 'already scanned a few moments ago...'
-                            continue
-                        elif dbsession.query(Task).filter(Task.ip == str(ip), Task.batch_id == batch, Task.date_soumis >= limite_avant_nouvel_essai).count() > 0:
-                            reponse['ips'][str(ip)] = 'already requested a few moments ago'
-                            continue
+            # Ajout à la queue...
+            for ip,iptype in ip_list:
+                actualise = False
 
+                if param.get('force', None) is None:
+                    limite_avant_nouvel_essai = datetime.datetime.now() - datetime.timedelta(0, SECONDES_POUR_RESCAN)
+                    if dbsession.query(Result).filter(Result.ip == str(ip), Result.finished >= limite_avant_nouvel_essai).count() > 0:
+                        reponse['ips'][str(ip)] = 'already scanned a few moments ago...'
+                        continue
+                    elif dbsession.query(Task).filter(Task.ip == str(ip), Task.batch_id == batch, Task.date_soumis >= limite_avant_nouvel_essai).count() > 0:
+                        reponse['ips'][str(ip)] = 'already requested a few moments ago'
+                        continue
+
+                try:
+                    print ip
+                    ip_int = int(ip)
+                except ValueError,e:
                     try:
-                        ip_int = int(ip)
-                    except ValueError,e:
-                        try:
-                            ipn = IPNetwork(ip)
-                            ip_int = int(ipn[0])
-                        except Exception, e:
+                        ipn = IPNetwork(ip)
+                        ip_int = int(ipn[0])
+                    except Exception, e:
+                        if iptype=='ip':
                             reponse['ips'][str(ip)] = 'invalid IP address'
                             continue
+                        ip_int=0
 
-                    tache = Task(
-                        ip=str(ip),
-                        ip_int=ip_int,
-                        priority=priority,
-                        reserved_ioc=False,
-                        ip_demandeur=request.remote_addr,
-                        retries_left_ioc=retries_left_ioc,
-                        commentaire=subnet,
-                        batch_id=batch
-                    )
-                    dbsession.add(tache)
-                    if batch and len(batch) > 0 and not actualise:
-                        reponse['ips'][str(ip)] = 'added to batch ' + batch + ' (' + str(retries_left_ioc) + ' tries for iocscan)'
-                    elif batch and len(batch) > 0 and actualise:
-                        reponse['ips'][str(ip)] = 'added to batch ' + batch + ' for retry (' + str(retries_left_ioc) + ' tries for iocscan)'
-                    else:
-                        reponse['ips'][str(ip)] = 'added to queue (' + str(retries_left_ioc) + ' tries for iocscan)'
-
-                    dbsession.commit()
-                return Response(
-                    status=200,
-                    response=json.dumps(
-                        reponse,
-                        indent=4
-                    ),
-                    content_type='application/json'
+                tache = Task(
+                    ip=str(ip),
+                    ip_int=ip_int,
+                    priority=priority,
+                    reserved_ioc=False,
+                    ip_demandeur=request.remote_addr,
+                    retries_left_ioc=retries_left_ioc,
+                    commentaire=subnet,
+                    batch_id=batch
                 )
-            else:
-                return APIscan()
+                dbsession.add(tache)
+
+                if batch and len(batch) > 0 and not actualise:
+                    reponse['ips'][str(ip)] = 'added to batch ' + batch + ' (' + str(retries_left_ioc) + ' tries for iocscan)'
+                elif batch and len(batch) > 0 and actualise:
+                    reponse['ips'][str(ip)] = 'added to batch ' + batch + ' for retry (' + str(retries_left_ioc) + ' tries for iocscan)'
+                else:
+                    reponse['ips'][str(ip)] = 'added to queue (' + str(retries_left_ioc) + ' tries for iocscan)'
+
+                dbsession.commit()
+            return Response(
+                status=200,
+                response=json.dumps(
+                    reponse,
+                    indent=4
+                ),
+                content_type='application/json'
+            )
+
         else:
             return APIscan()
 
     else: # Not logged in
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 
     # SCAN PROGRESS
@@ -910,7 +959,7 @@ def progress():
         tasks_data = [[getattr(t, h) for h in headers] for t in tasks]
         return render_template('scan-progress.html', headers=headers, tasks_data=tasks_data)
     else: #Not logged in
-        return redirect(url_for('login'))
+        return redirect(app.jinja_env.globals['url_for']('login'))
 
 
     # SERVER LAUNCH

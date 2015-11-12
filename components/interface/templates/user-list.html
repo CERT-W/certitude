@@ -33,7 +33,12 @@
                     {% endif %}
                 </a>
             </td>
-            <td><a href="{{url_for('userDelete', userid = user.id)}}">[X]</a></td>
+            <td>
+                <form class="inline" action="{{url_for('userDelete', userid = user.id)}}" method="POST">
+                   <a href="#" onclick="this.parentNode.submit()">[X]</a>
+                   <input name='{{ csrf_token_name }}' type="hidden" value="{{ csrf_token() }}">
+                </form>
+            </td>
         </tr>
     {% endfor %}
 </table>

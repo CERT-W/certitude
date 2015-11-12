@@ -61,7 +61,12 @@
                     <tr>
                         <td>{{xmlioc.name}}&nbsp;<img src="{{ url_for('static', filename='img/open.svg') }}" onclick='window.open("/ioc/{{xmlioc.id}}")'/></td>
                         <td>{{xmlioc.date_added}}</td>
-                        <td><a href="{{url_for('xmliocDelete', xmliocid=xmlioc.id)}}">[X]</a></td>
+                        <td>
+                            <form class="inline" action="{{url_for('xmliocDelete', xmliocid=xmlioc.id)}}" method="POST">
+                               <a href="#" onclick="this.parentNode.submit()">[X]</a>
+                               <input name='{{ csrf_token_name }}' type="hidden" value="{{ csrf_token() }}">
+                            </form>
+                        </td>
                     </tr>
                 {% endfor %}
             </table>
@@ -88,7 +93,12 @@
                         <td>{{profile.name}}</td>
                         <td>{{profile.host_confidential}}</td>
                         <td><img src="{{ url_for('static', filename='img/open.svg') }}" onMouseOver="showFloatingDiv('{{iocdesclist[profile.id]}}', event)" onMouseOut="hideFloatingDiv()"/></td>
-                        <td><a href="{{url_for('profileDelete', profileid=profile.id)}}">[X]</a></td>
+                        <td>
+                            <form class="inline" action="{{url_for('profileDelete', profileid=profile.id)}}" method="POST">
+                               <a href="#" onclick="this.parentNode.submit()">[X]</a>
+                               <input name='{{ csrf_token_name }}' type="hidden" value="{{ csrf_token() }}">
+                            </form>
+                        </td>
                     </tr>
                 {% endfor %}
             </table>
@@ -107,7 +117,12 @@
                     <tr>
                         <td>{{wincred.domain}}</td>
                         <td>{{wincred.login}}</td>
-                        <td><a href="{{url_for('wincredDelete', wincredid=wincred.id)}}">[X]</a></td>
+                        <td>
+                            <form class="inline" action="{{url_for('wincredDelete', wincredid=wincred.id)}}" method="POST">
+                               <a href="#" onclick="this.parentNode.submit()">[X]</a>
+                               <input name='{{ csrf_token_name }}' type="hidden" value="{{ csrf_token() }}">
+                            </form>
+                        </td>
                     </tr>
                 {% endfor %}
             </table>
