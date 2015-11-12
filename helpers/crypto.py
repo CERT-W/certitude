@@ -60,18 +60,18 @@ def decrypt(m, key, aes_mode = AES.MODE_CBC):
     return __unpad(cipher.decrypt(c[AES.block_size:]))
 
 
-# FOR TESTING PURPOSES
-if __name__ == '__main__':
+# FOR TESTING PURPOSES, uncomment this section
+# if __name__ == '__main__':
 
-    key = genOptimalKey()
+    # key = genOptimalKey()
 
-    print 'KEY = %s' % base64.b64encode(key)
+    # print 'KEY = %s' % base64.b64encode(key)
 
-    m = sys.argv[1]
-    print 'M = "%s"' % sys.argv[1]
+    # m = sys.argv[1]
+    # print 'M = "%s"' % sys.argv[1]
 
-    e_m = encrypt(m, key)
-    print 'E(M) = %s' % e_m
+    # e_m = encrypt(m, key)
+    # print 'E(M) = %s' % e_m
 
-    d_e_m = decrypt(e_m, key)
-    print 'D(E(M)) = "%s"' % d_e_m
+    # d_e_m = decrypt(e_m, key)
+    # print 'D(E(M)) = "%s"' % d_e_m
