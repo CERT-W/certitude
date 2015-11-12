@@ -474,7 +474,7 @@ def demarrer_scanner(hWaitStop=None, batch=None):
             halt = True
         except Exception, e:
             halt = True
-            loggingiocscan.error('Error : %s' % str(e))
+            loggingiocscan.error('Exception caught : %s, %s, %s' % (repr(e), str(e.message), str(e)))
 
             # Cancel changes and unreserve task
             session.rollback()
