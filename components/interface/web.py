@@ -64,18 +64,6 @@ CSRF_TOKEN_INDEX='_csrft'
 STATIC_ENDPOINT='static'
 
 def getCSRFToken():
-    # basic_url = url_for(endpoint, **values)
-
-    # if endpoint==STATIC_ENDPOINT:
-        # return basic_url
-
-    # token_index = ASYNC_TOKEN_INDEX if endpoint in ASYNC_ENDPOINTS else CSRF_TOKEN_INDEX
-
-    # if not token_index in session:
-        # session[token_index] = genCSRFToken()
-
-    # couple = '%s=%s' % (token_index, session[token_index])
-    # url = basic_url+'&'+couple if '?' in basic_url else basic_url+'?'+couple
 
     if not CSRF_TOKEN_INDEX in session:
         session[CSRF_TOKEN_INDEX] = genCSRFToken()
