@@ -21,6 +21,7 @@ class User(Base):
     email = Column(String)
     active = Column(Boolean)
     encrypted_master_key = Column(String)
+    b64_kdf_salt = Column(String)
 
 
 class XMLIOC(Base):

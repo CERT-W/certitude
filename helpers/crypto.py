@@ -2,20 +2,28 @@
 
 from Crypto.Cipher import AES
 from Crypto import Random
+from pbkdf2 import PBKDF2
 
 import base64, hashlib, sys
 
+SALT_LENGTH=16 # 128-bits
+
+# Random bytes generation
+def randomBytes(size):
+    return Random.new().read(size)
+    
+    
 # Generate a new random key
 # Size is the maximum available size for AES
 def genOptimalKey():
     optimalSize = max(AES.key_size)
-    return Random.new().read(optimalSize)
+    return randomBytes(optimalSize)
 
 
-# Create an AES key from text (password)
-# Padding is used as a countermeasure to SHA2 rainbow tables
-def keyFromText(text):
-    return hashlib.sha256(__pad(text, AES.block_size)).digest()
+# True KDF, fix #4
+def keyFromText(text, salt):
+    optimalSize = max(AES.key_size)
+    return PBKDF2(text, salt).read(optimalSize)
 
 
 # Pad a message to a multiple of size

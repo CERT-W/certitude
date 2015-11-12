@@ -15,6 +15,7 @@ from misc_models import User, GlobalConfig, XMLIOC, ConfigurationProfile, Window
 from helpers import hashPassword, checksum
 import crypto
 import getpass
+import base64
 
 # CERTitude core
 engine = create_engine(BASE_DE_DONNEES_QUEUE, echo=False)
@@ -53,7 +54,9 @@ while True:
         break
 
 print '[+] Encrypting Master Key for "seeker"...'
-keyFromPassword = crypto.keyFromText(password)
+
+KDFSalt = crypto.randomBytes(crypto.SALT_LENGTH)
+keyFromPassword = crypto.keyFromText(password, KDFSalt)
 EMK = crypto.encrypt(MASTER_KEY, keyFromPassword)
 
 print '[+] Storing Master Key checksum...'
@@ -71,7 +74,8 @@ u = User(
             password = hashPassword(password),
             email = 'root@localhost',
             active = True,
-            encrypted_master_key = EMK
+            encrypted_master_key = EMK,
+            b64_kdf_salt = base64.b64encode(KDFSalt)
         )
 
 session.add(u)

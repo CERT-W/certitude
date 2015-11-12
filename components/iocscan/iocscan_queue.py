@@ -304,7 +304,7 @@ def demarrer_scanner(hWaitStop=None, batch=None):
         sys.exit(1)
 
     # Get KEY and decrypt MASTER_KEY
-    keyFromPassword = crypto.keyFromText(password)
+    keyFromPassword = crypto.keyFromText(password, base64.b64decode(u.b64_kdf_salt))
     MASTER_KEY = crypto.decrypt(u.encrypted_master_key, keyFromPassword)
 
     mk_cksum = session.query(GlobalConfig).filter_by(key = 'master_key_checksum').first()

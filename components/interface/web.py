@@ -188,7 +188,7 @@ def userAdd():
                     errors.append('Database is broken, please create a new one !')
 
             if success:
-                keyFromPassword = crypto.keyFromText(user_password)
+                keyFromPassword = crypto.keyFromText(user_password, base64.b64decode(user.b64_kdf_salt))
                 MASTER_KEY = crypto.decrypt(user.encrypted_master_key, keyFromPassword)
 
                 # Someone changed the master key...
@@ -212,7 +212,8 @@ def userAdd():
 
             # Encrypt the MASTER_KEY for the user
             if success:
-                keyFromPassword = crypto.keyFromText(password1)
+                new_kdf_salt = crypto.randomBytes(crypto.SALT_LENGTH)
+                keyFromPassword = crypto.keyFromText(password1, new_kdf_salt)
                 emk = crypto.encrypt(MASTER_KEY, keyFromPassword)
                 del MASTER_KEY # safer ?
 
@@ -221,7 +222,8 @@ def userAdd():
                         password = hashPassword(password1),
                         email = request.form['email'],
                         active = True,
-                        encrypted_master_key = emk)
+                        encrypted_master_key = emk,
+                        b64_kdf_salt = base64.b64encode(new_kdf_salt))
 
                 dbsession.add(u)
                 dbsession.commit()
@@ -367,7 +369,7 @@ def wincredAdd():
 
             # MASTER_KEY altered
             if success:
-                keyFromPassword = crypto.keyFromText(user_password)
+                keyFromPassword = crypto.keyFromText(user_password, base64.b64decode(user.b64_kdf_salt))
                 MASTER_KEY = crypto.decrypt(user.encrypted_master_key, keyFromPassword)
 
 
