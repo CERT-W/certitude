@@ -48,6 +48,7 @@ import helpers.crypto as crypto
 
 import components.iocscan.openioc.openiocparser as openiocparser
 import helpers.iocscan_modules as ioc_modules
+import xml.etree.ElementTree as ET
 
 # Set up logger
 loggingserver = logging.getLogger('api')
@@ -655,23 +656,22 @@ def getInfosFromXML(content):
     c = base64.b64decode(content)
     r = {'guids':{}, 'totalguids':0}
 
-    # <IndicatorItem id="b63cc380-b286-45b9-8009-a85d2be07236" condition="contains">
-    #   <Context document="DnsEntryItem" search="DnsEntryItem/RecordName" type="mir"/>
-    #   <Content type="string">outlookscansafe.net</Content>
+    xml = ET.fromstring(c)
+    openiocparser.removeNS(xml)
+    
+    for indic in xml.iter('IndicatorItem'):
+    
+        guid = indic.attrib['id']
 
-    # <IndicatorItem id="54d1f329-a4bc-4e24-b047-5786950d2109" condition="is">
-    #   <Context document="DnsEntryItem" search="DnsEntryItem/RecordName" type="mir" />
-    #   <Content type="string">dieideenwerkstatt.at</Content>
-
-    matches = re.findall(r'\<IndicatorItem[^>]+id="([^"]+)"[^>]*\>[^<]+\<Context ([^>]*)/\>[^<]+\<Content[^>]+\>([^<]*)\</Content\>', c)
-
-    for match in matches:
-        guid, context, content = match
-        search = re.findall(r'search="([^"]+)"', context)[0]
-
-        r['guids'][guid] = {'search':search, 'value':content}
-        r['totalguids'] += 1
-
+        context = indic.findall('Context')[0]
+        search = context.attrib['search']
+        
+        content = indic.findall('Content')[0]
+        value = content.text
+        
+        r['guids'][guid] = {'search':search, 'value':value}
+        r['totalguids']+=1
+    
     return r
 
 @app.route('/static/data/results.csv/<int:batchid>')
@@ -876,7 +876,6 @@ def api_json():
                         continue
 
                 try:
-                    print ip
                     ip_int = int(ip)
                 except ValueError,e:
                     try:
