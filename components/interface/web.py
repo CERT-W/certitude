@@ -794,7 +794,39 @@ def scanbatch(batchid):
     else: #Not logged in
         return redirect(app.jinja_env.globals['url_for']('login'))
 
+@app.route('/scan/batch/<int:batchid>/delete')
+def scanbatchDelete(batchid):
+    if 'logged_in' in session:
 
+        xi = dbsession.query(Batch).filter_by(id=batchid).first()
+
+        if xi is None:
+            flash('This ScanBatch does not exist')
+            return redirect(url_for('scan'))
+
+        dbsession.delete(xi)
+        dbsession.commit()
+
+        return redirect(url_for('scan'))
+    else:
+        return redirect(url_for('login'))
+
+@app.route('/scan/task/<int:taskid>/delete')
+def scantaskDelete(taskid):
+    if 'logged_in' in session:
+
+        xi = dbsession.query(Task).filter_by(id=taskid).first()
+
+        if xi is None:
+            flash('This Task does not exist')
+            return redirect(url_for('progress'))
+
+        dbsession.delete(xi)
+        dbsession.commit()
+
+        return redirect(url_for('progress'))
+    else:
+        return redirect(url_for('login'))
 
 @app.route('/api/scan/', methods=['POST'])
 def api_json():
@@ -941,7 +973,6 @@ def api_json():
     else: # Not logged in
         return redirect(app.jinja_env.globals['url_for']('login'))
 
-
     # SCAN PROGRESS
 
 @app.route('/progress', methods=['GET',])
@@ -966,7 +997,6 @@ def progress():
         return render_template('scan-progress.html', headers=headers, tasks_data=tasks_data)
     else: #Not logged in
         return redirect(app.jinja_env.globals['url_for']('login'))
-
 
     # SERVER LAUNCH
 

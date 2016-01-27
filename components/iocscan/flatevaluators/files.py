@@ -4,9 +4,9 @@ import template
 
 class Evaluator(template.EvaluatorInterface):
 
-    evalList = ['FilePath', 'FullPath', 'FileExtension', 'FileName']
+	evalList = ['FilePath', 'FullPath', 'FileExtension', 'FileName', 'Md5sum', 'StringList/string']
 
-    def __init__(self, logger, ioc, remoteCommand, wd, keepFiles, confidential, dirname):
-        template.EvaluatorInterface.__init__(self, logger, ioc, remoteCommand, wd, keepFiles, confidential, dirname)
-
-        self.setEvaluatorParams(evalList=Evaluator.evalList, name='files', command='collector getfiles')
+	def __init__(self, logger, ioc, remoteCommand, wd, keepFiles, confidential, dirname):
+		template.EvaluatorInterface.__init__(self, logger, ioc, remoteCommand, wd, keepFiles, confidential, dirname)
+		
+		self.setEvaluatorParams(evalList=Evaluator.evalList, name='files', command='collector getfiles')

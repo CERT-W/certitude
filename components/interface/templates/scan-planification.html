@@ -23,6 +23,25 @@
 </table>
 <br />
 <a href="{{ url_for('scanbatchAdd') }}">Or add a new batch...</a>
-
+<br />
+<h2>Batch List</h2>
+<table style="margin-top:20px;" class="dashboard">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Delete</th>
+        </tr>
+    </thead>
+    <tr>
+        {% for batch in batches %}
+            <tr>
+                <td>{{batch.id}}</td>
+                <td>{{batch.name}}</td>
+                <td><a href="{{url_for('scanbatchDelete', batchid=batch.id)}}">[X]</a></td>
+            </tr>
+        {% endfor %}
+    </tdr>
+</table>
 
 {% endblock%}

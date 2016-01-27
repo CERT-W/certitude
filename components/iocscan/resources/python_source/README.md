@@ -18,5 +18,6 @@ Adding your module
 #### The right way
 
 - `pyinstaller --onefile collector.py`
-- Grab `dist\collector.exe` and TarGZ it along with `launch.bat` and other EXE in this directory
+- `pyinstaller --onefile decodeBase64Files.py`
+- Grab `dist\collector.exe` and `dist\decodeBase64Files.exe` and TarGZ it along with `launch.bat` and other EXE in this directory
 - Place it in parent directory under the name `collecte.tar.gz`
