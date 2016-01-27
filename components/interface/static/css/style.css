@@ -1,3 +1,7 @@
+body {
+  font-family: Calibri;
+}
+
 a, a:visited, a:active {
   color: #444;
 }

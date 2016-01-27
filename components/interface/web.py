@@ -37,7 +37,7 @@ from flask.ext.login import LoginManager, login_required, login_user, logout_use
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import DeclarativeMeta
-from netaddr import IPNetwork
+import netaddr
 
 from config import IOC_MODE, DEBUG, USE_SSL, SSL_KEY_FILE, SSL_CERT_FILE, BASE_DE_DONNEES_QUEUE, SECONDES_POUR_RESCAN
 from helpers.queue_models import Task
@@ -810,14 +810,15 @@ def api_json():
             if param_list is not None and param_list!='':
                 liste = param_list.replace('\r\n','\n')
                 ips = liste.split('\n')
-                ips = [(e,'ip') for e in ips]
-                list+=ips
+                list+=[(e, 'ipl') for e in ips]
+
 
             if param_ip is not None and param_ip!='':
-                list.append((param_ip, 'ip'))
+                list.append((param_ip, 'ipn'))
+                
 
             if param_hostname is not None and param_hostname!='' :
-                list.append((param_hostname, 'host'))
+                list.append(param_hostname)
 
             return list
 
@@ -848,6 +849,7 @@ def api_json():
             else:
                 retries_left_ioc = 1
 
+            subnet = 'n/a'
             subnetp = param.get('subnet', None)
             if subnetp  is not None:
                 subnet = subnetp
@@ -858,55 +860,72 @@ def api_json():
 
             reponse = {}
             reponse['code'] = 200
-            reponse['message'] = 'Requested scan of ' + str(len(ip_list)) + ' IP addresses'
-
             reponse['ips'] = {}
 
             # Ajout à la queue...
-            for ip,iptype in ip_list:
+            nb_ip, nb_ip_ok = 0, 0
+            for ip, iptype in ip_list:
                 actualise = False
 
-                if param.get('force', None) is None:
-                    limite_avant_nouvel_essai = datetime.datetime.now() - datetime.timedelta(0, SECONDES_POUR_RESCAN)
-                    if dbsession.query(Result).filter(Result.ip == str(ip), Result.finished >= limite_avant_nouvel_essai).count() > 0:
-                        reponse['ips'][str(ip)] = 'already scanned a few moments ago...'
-                        continue
-                    elif dbsession.query(Task).filter(Task.ip == str(ip), Task.batch_id == batch, Task.date_soumis >= limite_avant_nouvel_essai).count() > 0:
-                        reponse['ips'][str(ip)] = 'already requested a few moments ago'
-                        continue
-
+                # try:
+                    # ip_int = int(ip)
+                # except ValueError,e:
+                    # try:
+                        # ipn = IPNetwork(ip)
+                        # ip_int = int(ipn[0])
+                    # except Exception, e:
+                        # if iptype=='ip':
+                            # reponse['ips'][str(ip)] = 'invalid IP address'
+                            # continue
+                        # ip_int=0
+                
                 try:
-                    ip_int = int(ip)
-                except ValueError,e:
-                    try:
-                        ipn = IPNetwork(ip)
-                        ip_int = int(ipn[0])
-                    except Exception, e:
-                        if iptype=='ip':
-                            reponse['ips'][str(ip)] = 'invalid IP address'
-                            continue
-                        ip_int=0
+                
+                    if iptype[:2]=='ip':                   
+                        ipn = netaddr.IPNetwork(ip)
+                    else:
+                        ipn = [ip]
+                        
+                    ipSubnet = str(ip) if iptype=='ipl' else subnet
 
-                tache = Task(
-                    ip=str(ip),
-                    ip_int=ip_int,
-                    priority=priority,
-                    reserved_ioc=False,
-                    ip_demandeur=request.remote_addr,
-                    retries_left_ioc=retries_left_ioc,
-                    commentaire=subnet,
-                    batch_id=batch
-                )
-                dbsession.add(tache)
+                    for ipa in ipn:
+                        nb_ip+=1
+                    
+                        if param.get('force', None) is None:
+                            limite_avant_nouvel_essai = datetime.datetime.now() - datetime.timedelta(0, SECONDES_POUR_RESCAN)
+                            if dbsession.query(Result).filter(Result.ip == str(ipa), Result.finished >= limite_avant_nouvel_essai).count() > 0:
+                                reponse['ips'][str(ipa)] = 'already scanned a few moments ago...'
+                                continue
+                            elif dbsession.query(Task).filter(Task.ip == str(ipa), Task.batch_id == batch, Task.date_soumis >= limite_avant_nouvel_essai).count() > 0:
+                                reponse['ips'][str(ipa)] = 'already requested a few moments ago'
+                                continue
+                        
+                        nb_ip_ok+=1
+                        tache = Task(
+                            ip=str(ipa),
+                            ip_int=0,
+                            priority=priority,
+                            reserved_ioc=False,
+                            ip_demandeur=request.remote_addr,
+                            retries_left_ioc=retries_left_ioc,
+                            commentaire=ipSubnet,
+                            batch_id=batch
+                        )
+                        dbsession.add(tache)
+                        
+                    if batch and len(batch) > 0 and not actualise:
+                        reponse['ips'][str(ip)] = 'added to batch ' + batch + ' (' + str(retries_left_ioc) + ' tries for iocscan)'
+                    elif batch and len(batch) > 0 and actualise:
+                        reponse['ips'][str(ip)] = 'added to batch ' + batch + ' for retry (' + str(retries_left_ioc) + ' tries for iocscan)'
+                    else:
+                        reponse['ips'][str(ip)] = 'added to queue (' + str(retries_left_ioc) + ' tries for iocscan)'
+                        
+                except netaddr.core.AddrFormatError:
+                    reponse['ips'][str(ip)] = ' not added to batch ' + batch + ': bad formatting)'
 
-                if batch and len(batch) > 0 and not actualise:
-                    reponse['ips'][str(ip)] = 'added to batch ' + batch + ' (' + str(retries_left_ioc) + ' tries for iocscan)'
-                elif batch and len(batch) > 0 and actualise:
-                    reponse['ips'][str(ip)] = 'added to batch ' + batch + ' for retry (' + str(retries_left_ioc) + ' tries for iocscan)'
-                else:
-                    reponse['ips'][str(ip)] = 'added to queue (' + str(retries_left_ioc) + ' tries for iocscan)'
-
-                dbsession.commit()
+            
+            reponse['message'] = 'Requested scan of %d IP addresses, %d were OK' % (nb_ip, nb_ip_ok)
+            dbsession.commit()
             return Response(
                 status=200,
                 response=json.dumps(
