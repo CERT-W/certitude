@@ -1,3 +1,4 @@
+impacket <= 0.9.13
 pbkdf2
 flask
 flask-login
@@ -6,4 +7,3 @@ netaddr
 dnspython
 pyasn1
 lxml
-impacket
