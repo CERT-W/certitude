@@ -818,7 +818,7 @@ def api_json():
                 
 
             if param_hostname is not None and param_hostname!='' :
-                list.append(param_hostname)
+                list.append((param_hostname, 'host'))
 
             return list
 
