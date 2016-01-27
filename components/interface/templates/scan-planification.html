@@ -8,21 +8,19 @@
 <br/><pre class="error">{{ errors }}</pre>
 {% endif %}
 
-<table style="margin-top:20px;" class="form_table">	
-    <tr>
-        <td rowspan=3>Select a batch:</td>
-        <td>
-            <select name="batch" id="batch">
-                <option selected=selected> </option>
-                {% for batch in batches %}
-                    <option onClick="location.href='{{url_for('scanbatch', batchid=batch.id)}}'">{{batch.name}}</option>
-                {% endfor %}
-            </select>
-        </td>
-    </tr>
-</table>
+<div style="margin-top:20px">	
+    <strong><a href="{{ url_for('scanbatchAdd') }}">Add a new batch...</a></strong>
+    <br />
+    <br />
+    Or select an existing batch:
+    <table style="margin-left:20px; font-weight:bold">
+        {% for batch in batches %}
+            <tr><td>- <a href="{{url_for('scanbatch', batchid=batch.id)}}">{{batch.name}}</a></td></tr>
+        {% endfor %}
+    </table>
+</div>
 <br />
-<a href="{{ url_for('scanbatchAdd') }}">Or add a new batch...</a>
+
 
 
 {% endblock%}
