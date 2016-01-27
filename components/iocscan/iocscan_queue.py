@@ -106,7 +106,7 @@ def scan(targetObject, IOCObjects, hostConfidential):
 
     # Init PsExec tunnel to target
     try:
-        RemCom = remotecmd.RemoteCmd(loggingiocscan,
+        RemCom = remotecmd.RemoteCmd(threadname,
                                         targetObject['ip'],
                                         targetObject['login'],
                                         targetObject['password'],

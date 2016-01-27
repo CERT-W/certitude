@@ -101,7 +101,7 @@ class RemoteCmd:
     #   Constructor
     #   Does the setup
     #
-    def __init__(self, logger, ip, login, password, **kwargs):
+    def __init__(self, threadname, ip, login, password, **kwargs):
 
     # init variables
 
@@ -110,7 +110,7 @@ class RemoteCmd:
 
     #KWargs
 
-        self.logger = logger
+        self.logger = logging.getLogger('remotecmd.' + threadname)
         domain = DEFAULT_DOMAIN if 'domain' not in kwargs.keys() else kwargs['domain']
         commandPriority = DEFAULT_PRIORITY if 'priority' not in kwargs.keys() else kwargs['priority']
 
@@ -140,6 +140,8 @@ class RemoteCmd:
             self.__setup(ip, login, password, domain)
         except smbconnection.SessionError,e :
             self.__log__(LEVEL_CRITICAL,'Error during setup',e)
+            raise e
+            
 
 
     ######
