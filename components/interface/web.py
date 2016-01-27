@@ -46,8 +46,9 @@ from helpers.misc_models import User, ConfigurationProfile, WindowsCredential, X
 from helpers.helpers import hashPassword, checksum, verifyPassword
 import helpers.crypto as crypto
 
-import components.iocscan.openioc.openiocparser as openiocparser
+import components.scanner.openioc.openiocparser as openiocparser
 import helpers.iocscan_modules as ioc_modules
+import helpers.hashscan_modules as hash_modules
 import xml.etree.ElementTree as ET
 
 # Set up logger
@@ -87,7 +88,7 @@ app.config['IOCS_FOLDER'] = os.path.join('components', 'iocscan', '.','ioc')
 app.config['RESULT_FILE'] = os.path.join('components', 'interface', 'static','data','results.csv')
 app.config['CERTITUDE_OUTPUT_FOLDER'] = 'results'
 app.config['PROCESSED_FOLDER'] = 'processed'
-RESULT_FILE_HEADER = 'Title:HostId,Title:Hostname,Lookup:Success,Lookup:IP,Lookup:Subnet,Malware,Compromise'
+RESULT_FILE_HEADER = 'Title:HostId,Title:Hostname,Lookup:Success,Lookup:IOCScanned,Lookup:HashScanned,Lookup:IP,Lookup:Subnet,Malware,Compromise'
 
 IP_REGEX = '(([0-9]|[1-9][0-9]|1[0-9]{2}|2([0-4][0-9]|5[0-5]))\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2([0-4][0-9]|5[0-5]))'
 
@@ -555,8 +556,11 @@ def iocjson(iocid):
 
     FLAT_MODE = (IOC_MODE == 'flat')
     allowedElements = {}
-    evaluatorList = ioc_modules.flatEvaluatorList if FLAT_MODE else ioc_modules.logicEvaluatorList
+    IOCevaluatorList = ioc_modules.flatEvaluatorList if FLAT_MODE else ioc_modules.logicEvaluatorList
+    HASHevaluatorList = hash_modules.flatEvaluatorList if FLAT_MODE else hash_modules.logicEvaluatorList
 
+    evaluatorList = dict(IOCevaluatorList.items() + HASHevaluatorList.items())
+    
     for name, classname in evaluatorList.items():
         allowedElements[name] = classname.evalList
 
@@ -625,7 +629,10 @@ def hostjson(hostid):
 
         FLAT_MODE = (IOC_MODE == 'flat')
         allowedElements = {}
-        evaluatorList = ioc_modules.flatEvaluatorList if FLAT_MODE else ioc_modules.logicEvaluatorList
+        IOCevaluatorList = ioc_modules.flatEvaluatorList if FLAT_MODE else ioc_modules.logicEvaluatorList
+        HASHevaluatorList = hash_modules.flatEvaluatorList if FLAT_MODE else hash_modules.logicEvaluatorList
+
+        evaluatorList = dict(IOCevaluatorList.items() + HASHevaluatorList.items())
 
         for name, classname in evaluatorList.items():
             allowedElements[name] = classname.evalList
@@ -677,7 +684,7 @@ def getInfosFromXML(content):
 @app.route('/static/data/results.csv/<int:batchid>')
 def resultscsv(batchid):
     if 'logged_in' in session:
-        response = 'Title:HostId,Title:Hostname-IP,Lookup:Success,Lookup:Subnet,Malware,Compromise'
+        response = 'Title:HostId,Title:Hostname-IP,Lookup:Success,Lookup:IOCScanned,Lookup:HashScanned,Lookup:Subnet,Malware,Compromise'
 
         #Get Batch
         batch = dbsession.query(Batch).filter_by(id = batchid).first()
@@ -708,7 +715,7 @@ def resultscsv(batchid):
         for task, result in all_tasks_results:
             ioc_detections = dbsession.query(IOCDetection).filter_by(result_id = result.id).all()
 
-            response += '%d,%s,%s,%s' % (result.id, task.ip, result.smbreachable, task.commentaire)
+            response += '%d,%s,%s,%s,%s,%s' % (result.id, task.ip, result.smbreachable, task.iocscanned, task.hashscanned, task.commentaire)
             result_for_host = {e:0 for e in ioc_list}
 
             # Sum IOC detections
@@ -830,24 +837,43 @@ def api_json():
         ip_list = getCible(param)
         if len(ip_list) > 0:
 
-            # Priority
+            # Priority IOC
             try:
-                priority = int(param.get('priority'))
+                priority_ioc = int(param.get('priority_ioc'))
             except:
-                priority = 10
-            if not priority > 0:
-                priority = 10
+                priority_ioc = 10
+            if not priority_ioc > 0:
+                priority_ioc = 10
+
+            # Priority HASH
+            try:
+                priority_hash = int(param.get('priority_hash'))
+            except:
+                priority_hash = 10
+            if not priority_hash > 0:
+                priority_hash = 10
 
             # Retries count (IOC)
-            essais = param.get('retries_ioc')
-            if essais is not None > 0:
+            essais_ioc = param.get('retries_ioc')
+            if essais_ioc is not None > 0:
                 try:
-                    assert 0 < int(essais) <= 10000
-                    retries_left_ioc = int(essais)
+                    assert 0 < int(essais_ioc) <= 10
+                    retries_left_ioc = int(essais_ioc)
                 except:
-                    retries_left_ioc = 1
+                    retries_left_ioc = 10
             else:
-                retries_left_ioc = 1
+                retries_left_ioc = 10
+
+            # Retries count (hash)
+            essais_hash = param.get('retries_hash')
+            if essais_hash is not None > 0:
+                try:
+                    assert 0 < int(essais_hash) <= 10
+                    retries_left_hash = int(essais_hash)
+                except:
+                    retries_left_hash = 10
+            else:
+                retries_left_hash = 10
 
             subnet = 'n/a'
             subnetp = param.get('subnet', None)
@@ -902,23 +928,29 @@ def api_json():
                         
                         nb_ip_ok+=1
                         tache = Task(
-                            ip=str(ipa),
-                            ip_int=0,
-                            priority=priority,
-                            reserved_ioc=False,
-                            ip_demandeur=request.remote_addr,
-                            retries_left_ioc=retries_left_ioc,
-                            commentaire=ipSubnet,
-                            batch_id=batch
+                            ip = str(ipa),
+                            priority_ioc  =  priority_ioc,
+                            priority_hash = priority_hash,
+                            reserved_ioc = False,
+                            reserved_hash = False,
+                            iocscanned = False,
+                            hashscanned = False,
+                            ip_demandeur = request.remote_addr,
+                            retries_left_ioc = retries_left_ioc,
+                            retries_left_hash = retries_left_hash,
+                            commentaire = ipSubnet,
+                            batch_id = batch
                         )
                         dbsession.add(tache)
                         
                     if batch and len(batch) > 0 and not actualise:
-                        reponse['ips'][str(ip)] = 'added to batch ' + batch + ' (' + str(retries_left_ioc) + ' tries for iocscan)'
+                        reponse['ips'][str(ip)] = 'added to batch ' + batch
                     elif batch and len(batch) > 0 and actualise:
-                        reponse['ips'][str(ip)] = 'added to batch ' + batch + ' for retry (' + str(retries_left_ioc) + ' tries for iocscan)'
+                        reponse['ips'][str(ip)] = 'added to batch ' + batch + ' for retry'
                     else:
-                        reponse['ips'][str(ip)] = 'added to queue (' + str(retries_left_ioc) + ' tries for iocscan)'
+                        reponse['ips'][str(ip)] = 'added to queue'
+                        
+                    reponse['ips'][str(ip)] +=  ' (%d tries for iocscan, %d tries for hashscan)' % (retries_left_ioc, retries_left_hash)
                         
                 except netaddr.core.AddrFormatError:
                     reponse['ips'][str(ip)] = ' not added to batch ' + batch + ': bad formatting)'
@@ -956,10 +988,15 @@ def progress():
             'date_soumis',
             'date_debut',
             'iocscanned',
-            'priority',
+            'hashscanned',
+            'priority_ioc',
+            'priority_hash',
             'reserved_ioc',
+            'reserved_hash',
             'retries_left_ioc',
-            'last_retry',
+            'retries_left_hash',
+            'last_retry_ioc',
+            'last_retry_hash',
         )
         tasks = dbsession.query(Task).order_by(Task.id.desc()).limit(50)
         tasks_data = [[getattr(t, h) for h in headers] for t in tasks]

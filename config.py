@@ -34,5 +34,5 @@ BASE_DE_DONNEES_QUEUE = "sqlite:///data.db"
 IOC_MODE = 'flat'           # flat | logic ## DO NOT USE "logic" for now !!!
 IOC_KEEPFILES = False       # True | False
 IOC_CONFIDENTIAL_DIRECTORY = 'DR_PLUS' # \components\iocscan\DR_PLUS
-IOC_COMPONENT_ROOT = 'components\\iocscan'
-IOC_TEMP_DIR = 'components\\iocscan\\tmp'
+IOC_COMPONENT_ROOT = 'components\\scanner'
+IOC_TEMP_DIR = 'components\\scanner\\tmp'

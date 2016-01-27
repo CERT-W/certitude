@@ -41,11 +41,21 @@
                         </td>
                     </tr>
                     <tr>
-                        <td>Priority:</td>
-                        <td><input name="priority" type="number" placeholder="Min=1 Max=99"/></td>
+                        <td>IOC Scan Priority:</td>
+                        <td><input name="priority_ioc" type="number" placeholder="Min=1 Max=99"/></td>
                     </tr>
                     <tr>
-                        <td rowspan=2>Number of tries:</td>
+                        <td>Hash Scan Priority:</td>
+                        <td><input name="priority_hash" type="number" placeholder="Min=1 Max=99"/></td>
+                    </tr>
+                    <tr>
+                        <td rowspan=2>Max number of retries (IOC):</td>
+                    </tr>
+                    <tr>
+                        <td><input type="number" name="retries_ioc" placeholder="IOC scan max tries"/></td>
+                    </tr>
+                    <tr>
+                        <td rowspan=2>Max number of retries (Hash):</td>
                     </tr>
                     <tr>
                         <td><input type="number" name="retries_ioc" placeholder="IOC scan max tries"/></td>
