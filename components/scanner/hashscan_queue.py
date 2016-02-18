@@ -72,6 +72,7 @@ DR_PLUS_DIR = 'DR_PLUS'
 dropList = [
     [os.path.join('resources','gzip.exe'), 'gzip.exe'],
     [os.path.join('resources','tar.exe'), 'tar.exe'],
+    [os.path.join('resources','hash.cfg'), 'hash.cfg'],
     [os.path.join('resources','collecte.tar.gz'), 'collecte.tar.gz'],
     [os.path.join('resources','import_sql.tar.gz'), 'import_sql.tar.gz'],
     [os.path.join('resources','rmtar.bat'), 'rmtar.bat'],
@@ -115,7 +116,7 @@ def scan(targetObject, IOCObjects, hostConfidential):
         logginghashscan.info('Handler %s has been succesfully created' % HANDLER_NAME)
     # too bad, error in connection
     except Exception, e:
-        logginghashscan.error('Handle '+HANDLER_NAME+' could not be created : '+str(e).decode('cp1252'))
+        logginghashscan.error('Handle '+HANDLER_NAME+' could not be created : ' + str(e).encode('utf-8'))
         return None
 
     drive = RemCom.setNet()
@@ -338,8 +339,6 @@ def demarrer_scanner(hWaitStop=None, batch=None):
     FLAT_MODE = (IOC_MODE == 'flat')
     allowedElements = {}
     evaluatorList = hash_modules.flatEvaluatorList if FLAT_MODE else hash_modules.logicEvaluatorList
-
-    print evaluatorList
     
     for name, classname in evaluatorList.items():
         allowedElements[name] = classname.evalList
