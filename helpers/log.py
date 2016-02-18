@@ -44,9 +44,13 @@ def init():
     handler_logiocscan = logging.FileHandler(path.join(chemin, '..', DOSSIER_LOG, 'iocscanners.log'))
     handler_logiocscan.setFormatter(formatter)
     loggingiocscan.addHandler(handler_logiocscan)
-
-
-
+    
+     # IOCScanners
+    logginghashscan = logging.getLogger('hashscanner')
+    handler_loghashscan = logging.FileHandler(path.join(chemin, '..', DOSSIER_LOG, 'hashscanners.log'))
+    handler_loghashscan.setFormatter(formatter)
+    logginghashscan.addHandler(handler_loghashscan)
+    
     # Double sortie vers la console aussi
     # define a Handler which writes INFO messages or higher to the sys.stderr
     console = logging.StreamHandler()
