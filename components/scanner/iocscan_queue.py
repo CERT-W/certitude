@@ -232,6 +232,7 @@ def scan(targetObject, IOCObjects, hostConfidential):
 #
 def analyse(resultats_scan, tache):
 
+    loggingiocscan.info('Begin IOC analysis for host %s' % tache.ip)
     smbreachable = True
 
     # Scan not completed
@@ -278,6 +279,8 @@ def analyse(resultats_scan, tache):
             session.add(id)
 
         session.commit()
+        
+    loggingiocscan.info('End IOC analysis for host %s' % tache.ip)
 
 
 # MAIN function launched by the scheduler
@@ -329,8 +332,17 @@ def demarrer_scanner(hWaitStop=None, batch=None):
 
     all_xmliocs = session.query(XMLIOC).order_by(XMLIOC.name.asc())
     all_cp = session.query(ConfigurationProfile).order_by(ConfigurationProfile.name.asc())
-
-    ioc_by_cp = {cp.id:[int(e) for e in cp.ioc_list.split(',')] for cp in all_cp}
+    
+    ioc_by_cp = {}
+    for cp in all_cp:
+        if cp.ioc_list == '':
+            loggingiocscan.warning('No IOC defined for profile "%s"' % cp.name)
+            continue
+            
+        ioc_by_cp[cp.id] = []
+        for e in cp.ioc_list.split(','):
+            ioc_by_cp[cp.id].append(int(e))
+    
     tree_by_ioc = {}
 
 
@@ -446,7 +458,12 @@ def demarrer_scanner(hWaitStop=None, batch=None):
                         os.makedirs(testdir)
 
                 # Let the scan begin
-                resultats_scan = scan(targetObject, tree_by_cp[cp.id], cp.host_confidential)
+                
+                if cp.id in tree_by_cp.keys():
+                    resultats_scan = scan(targetObject, tree_by_cp[cp.id], cp.host_confidential)
+                else:
+                    loggingiocscan.warning('No IOC to scan (profile=%s)' % cp.name)
+                    resultats_scan = {}
 
                 # Analyze the results
                 analyse(resultats_scan, tache)

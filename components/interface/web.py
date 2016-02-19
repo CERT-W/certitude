@@ -611,7 +611,10 @@ def hostjson(hostid):
     cp = dbsession.query(ConfigurationProfile).filter_by(id = batch.configuration_profile_id).first()
 
     # The IOC list
-    ioc_list = [int(e) for e in cp.ioc_list.split(',')]
+    if cp.ioc_list == '':
+        ioc_list = []
+    else:
+        ioc_list = [int(e) for e in cp.ioc_list.split(',')]
 
     # And IOC detections
     ioc_detections = dbsession.query(IOCDetection).filter_by(result_id = result.id).all()
@@ -693,7 +696,10 @@ def resultscsv(batchid):
 
         #Get all IOCs
         cp = dbsession.query(ConfigurationProfile).filter_by(id = batch.configuration_profile_id).first()
-        ioc_list = [int(e) for e in cp.ioc_list.split(',')]
+        if cp.ioc_list == '':
+            ioc_list = []
+        else:
+            ioc_list = [int(e) for e in cp.ioc_list.split(',')]
         iocs = dbsession.query(XMLIOC).filter(XMLIOC.id.in_(ioc_list)).all()
 
         #Complete first line & assoc ioc.id => ioc
