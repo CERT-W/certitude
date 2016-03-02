@@ -258,10 +258,13 @@ def userAdd():
                         encrypted_master_key = emk,
                         b64_kdf_salt = base64.b64encode(new_kdf_salt))
 
-                dbsession.add(u)
-                dbsession.commit()
+            if len(request.form['username']) <= 0 or len(request.form['email']) <= 0:
+                success = False
+                errors.append('No empty fields allowed.')
 
             if success:
+                dbsession.add(u)
+                dbsession.commit()
                 return redirect(app.jinja_env.globals['url_for']('users'))
             else:
                 return render_template('user-add.html', username=request.form['username'], email=request.form['email'], errors='\n'.join(errors))
@@ -450,18 +453,31 @@ def xmliocAdd():
 
             xml_content = request.files['xml_content'].stream.read()
 
+            ioc_name = request.form['name']
             xi = XMLIOC(
-                    name=request.form['name'],
-                    xml_content = base64.b64encode(xml_content))
+                    name=ioc_name,
+                    xml_content=base64.b64encode(xml_content))
 
-            dbsession.add(xi)
-            dbsession.commit()
+            if len(ioc_name) <= 0:
+                success = False
+                errors.append("IOC name cannot be empty.")
+            else:
+                existing_ioc = dbsession.query(XMLIOC).filter_by(name=ioc_name).first()
+                if existing_ioc is not None:
+                    success = False
+                    errors.append("IOC name already exists.")
+
+            if len(xml_content) <= 0:
+                success = False
+                errors.append("You must specify a file.")
 
             if success:
+                dbsession.add(xi)
+                dbsession.commit()
                 return redirect(app.jinja_env.globals['url_for']('config'))
             else:
                 flash('\n'.join(errors))
-                return render_template('config-xmlioc-add.html', name = request.form['name'])
+                return render_template('config-xmlioc-add.html', errors='\n'.join(errors), name=ioc_name)
     else:
         return redirect(app.jinja_env.globals['url_for']('login'))
 
@@ -480,19 +496,33 @@ def profileAdd():
 
             hc = True if 'host_confidential' in request.form else False
 
+            profile_name = request.form['name']
+            ioc_selected_list = ','.join(request.form.getlist('ioc_list'))
             cp = ConfigurationProfile(
-                    name=request.form['name'],
+                    name=profile_name,
                     host_confidential=hc,
-                    ioc_list=','.join(request.form.getlist('ioc_list')))
+                    ioc_list=ioc_selected_list)
 
-            dbsession.add(cp)
-            dbsession.commit()
+            if len(profile_name) <= 0:
+                success = False
+                errors.append("Profile name cannot be empty.")
+            else:
+                existing_profile_name = dbsession.query(ConfigurationProfile).filter_by(name = profile_name).first()
+                if existing_profile_name is not None:
+                    success = False
+                    errors.append("Profile name already exists.")
+
+            if len(ioc_selected_list) <= 0:
+                success = False
+                errors.append("You must select at least one IOC.")
 
             if success:
+                dbsession.add(cp)
+                dbsession.commit()
                 return redirect(app.jinja_env.globals['url_for']('config'))
             else:
                 flash('\n'.join(errors))
-                return render_template('config-profile-add.html', xmliocs = xi, name = request.form['name'], host_confidential = request.form['host_confidential'])
+                return render_template('config-profile-add.html', errors='\n'.join(errors), host_confidential=hc, name=request.form['name'], xmliocs=xi)
     else:
         return redirect(app.jinja_env.globals['url_for']('login'))
 
@@ -772,24 +802,33 @@ def scanbatchAdd():
         wc = dbsession.query(WindowsCredential).order_by(WindowsCredential.domain.asc(), WindowsCredential.login.asc())
 
         if request.method == 'GET':
-            return render_template('scan-planification-batch-add.html', configuration_profiles = cp, windows_credentials = wc)
+            return render_template('scan-planification-batch-add.html', configuration_profiles=cp, windows_credentials=wc)
         else:
             success = True
             errors = []
 
+            batch_name = request.form['name']
             batch = Batch(
-                    name=request.form['name'],
+                    name=batch_name,
                     configuration_profile_id = request.form['profile'],
                     windows_credential_id = request.form['credential'])
 
-            dbsession.add(batch)
-            dbsession.commit()
+            if len(batch.name) <= 0:
+                success = False
+                errors.append("Batch name cannot be empty.")
+            else:
+                existing_batch = dbsession.query(Batch).filter_by(name=batch_name).first()
+                if existing_batch is not None:
+                    success = False
+                    errors.append("Batch name already exists.")
 
             if success:
+                dbsession.add(batch)
+                dbsession.commit()
                 return redirect(app.jinja_env.globals['url_for']('scan'))
             else:
                 flash('\n'.join(errors))
-                return render_template('scan-planification-batch-add.html', configuration_profiles = cp, windows_credentials = wc)
+                return render_template('scan-planification-batch-add.html', errors='\n'.join(errors), configuration_profiles=cp, windows_credentials=wc)
     else: #Not logged in
         return redirect(app.jinja_env.globals['url_for']('login'))
 
