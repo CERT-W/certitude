@@ -301,9 +301,9 @@ def demarrer_scanner(hWaitStop=None, batch=None):
 
     # No user or bad password
     if not u or hashPassword(password) != u.password:
-        logginghashscan.critical('Username or password incorrect, shutting down...')
+        logginghashscan.critical('Username or password incorrect, stopping the initialization...')
         raw_input()
-        sys.exit(1)
+        return
 
     # Get KEY and decrypt MASTER_KEY
     keyFromPassword = crypto.keyFromText(password, base64.b64decode(u.b64_kdf_salt))
@@ -313,17 +313,17 @@ def demarrer_scanner(hWaitStop=None, batch=None):
 
     # No checksum in config ???
     if not mk_cksum:
-        logginghashscan.critical('Database is broken, please create a new one !')
+        logginghashscan.critical('Database is broken, please create a new one, stopping the initialization...')
         del MASTER_KEY
         raw_input()
-        sys.exit(1)
+        return
 
     # Someone has been playing with the database !
     if checksum(MASTER_KEY)!=mk_cksum.value:
-        logginghashscan.critical('MASTER_KEY may have been altered')
+        logginghashscan.critical('MASTER_KEY may have been altered, stopping the initialization...')
         del MASTER_KEY
         raw_input()
-        sys.exit(1)
+        return
 
     logginghashscan.info('Login successful !')
     # INITIALIZATION

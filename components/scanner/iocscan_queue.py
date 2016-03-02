@@ -301,9 +301,9 @@ def demarrer_scanner(hWaitStop=None, batch=None):
 
     # No user or bad password
     if not u or hashPassword(password) != u.password:
-        loggingiocscan.critical('Username or password incorrect, shutting down...')
+        loggingiocscan.critical('Username or password incorrect, stopping the initialization...')
         raw_input()
-        sys.exit(1)
+        return
 
     # Get KEY and decrypt MASTER_KEY
     keyFromPassword = crypto.keyFromText(password, base64.b64decode(u.b64_kdf_salt))
@@ -313,17 +313,17 @@ def demarrer_scanner(hWaitStop=None, batch=None):
 
     # No checksum in config ???
     if not mk_cksum:
-        loggingiocscan.critical('Database is broken, please create a new one !')
+        loggingiocscan.critical('Database is broken, please create a new one, stopping the initialization...')
         del MASTER_KEY
         raw_input()
-        sys.exit(1)
+        return
 
     # Someone has been playing with the database !
     if checksum(MASTER_KEY)!=mk_cksum.value:
-        loggingiocscan.critical('MASTER_KEY may have been altered')
+        loggingiocscan.critical('MASTER_KEY may have been altered, stopping the initialization...')
         del MASTER_KEY
         raw_input()
-        sys.exit(1)
+        return
 
     loggingiocscan.info('Login successful !')
     # INITIALIZATION
@@ -465,8 +465,9 @@ def demarrer_scanner(hWaitStop=None, batch=None):
                     loggingiocscan.warning('No IOC to scan (profile=%s)' % cp.name)
                     resultats_scan = {}
 
-                # Analyze the results
-                analyse(resultats_scan, tache)
+                if resultats_scan:
+                    # Analyze the results
+                    analyse(resultats_scan, tache)
 
                 # Update queue size
                 taille_a_scanner = a_scanner.count()
