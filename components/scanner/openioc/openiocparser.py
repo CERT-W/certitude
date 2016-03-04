@@ -67,7 +67,7 @@ class OpenIOCParser:
         if 'fromString' in kwargs.keys() and kwargs['fromString']:
             self.fromString = True
         else:
-            slef.fromString = False
+            self.fromString = False
 
     ''' METHOD parse
         Sets attribute __tree to the LogicTree (nodes are AND/OR) version of the OpenIOC file
