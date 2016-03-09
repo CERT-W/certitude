@@ -46,7 +46,7 @@ def getDNSEntries():
                 RNAME = value
                 
             if c==1:
-                TTL = value
+                RTYPE = value
                 
             if c==2:
                 TTL = value
