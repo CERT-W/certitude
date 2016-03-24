@@ -183,9 +183,13 @@ class EvaluatorInterface:
             self.log('query returned "%s"' % res, logging.DEBUG)
 
             retryCount -= 1
+        ret = evltResult.TRUE
+        if res == '':
+            ret = evltResult.UNDEF
+        elif res == '0':
+            ret = evltResult.FALSE
 
-
-        return evltResult.FALSE if res=='0' else evltResult.TRUE
+        return ret
 
     # Escapes the value
     def escapeValue(self, value):
