@@ -11,6 +11,7 @@
             <th>{{ h }}</th>
         {% endfor %}
         <th>scan result</th>
+        <th>delete</th>
 		</tr>
 	</thead>
 	<tbody>
@@ -28,6 +29,7 @@
 			</td>
 		{% endfor %}
         <td><a href='campaignvisualizations/{{ t.0 }}'>&nbsp;&raquo;&nbsp;</a></td>
+        <td><a href="{{url_for('scantaskDelete', taskid=t.0)}}">[X]</a></td>
 		</tr>
 	{% endfor %}
 	</tbody>

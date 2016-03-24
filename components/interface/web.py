@@ -832,6 +832,30 @@ def scanbatchAdd():
     else: #Not logged in
         return redirect(app.jinja_env.globals['url_for']('login'))
 
+@app.route('/scan/task/<int:taskid>/delete')
+def scantaskDelete(taskid):
+    if 'logged_in' in session:
+
+        task = dbsession.query(Task).filter_by(id=taskid).first()
+        dbsession.delete(task)
+        dbsession.commit()
+
+        return redirect(url_for('progress'))
+    else: #Not logged in
+        return redirect(url_for('login'))
+
+@app.route('/scan/batch/<int:batchid>/delete')
+def scanbatchDelete(batchid):
+    if 'logged_in' in session:
+
+        batch = dbsession.query(Batch).filter_by(id=batchid).first()
+
+        dbsession.delete(batch)
+        dbsession.commit()
+
+        return redirect(url_for('scan'))
+    else: #Not logged in
+        return redirect(url_for('login'))
 
 @app.route('/scan/batch/<int:batchid>', methods=['GET',])
 def scanbatch(batchid):

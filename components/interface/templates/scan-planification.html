@@ -15,7 +15,7 @@
     Or select an existing batch:
     <table style="margin-left:20px; font-weight:bold">
         {% for batch in batches %}
-            <tr><td>- <a href="{{url_for('scanbatch', batchid=batch.id)}}">{{batch.name}}</a></td></tr>
+            <tr><td>- <a href="{{url_for('scanbatch', batchid=batch.id)}}">{{batch.name}}</a><a href="{{url_for('scanbatchDelete', batchid=batch.id)}}">  [X]</a></td></tr>
         {% endfor %}
     </table>
 </div>
