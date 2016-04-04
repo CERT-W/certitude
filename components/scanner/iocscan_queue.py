@@ -491,7 +491,6 @@ def demarrer_scanner(hWaitStop=None, batch=None):
         except KeyboardInterrupt:
             halt = True
         except Exception, e:
-            halt = True
             loggingiocscan.error('Exception caught : %s, %s, %s' % (repr(e), str(e.message), str(e)))
 
             # Cancel changes and unreserve task

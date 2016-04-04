@@ -125,7 +125,7 @@ class RemoteCmd:
         self.__serviceLaunched = False
 
         self.__connection = None
-        self.__connection = smbconnection.SMBConnection(login+'_'+ip, ip, socket.gethostname(), 445, 3600, smbconnection.SMB_DIALECT)
+        self.__connection = smbconnection.SMBConnection(login+'_'+ip, ip, socket.gethostname(), 445, 3600, smbconnection.SMB2_DIALECT_21)
         self.__commandPriority = commandPriority
         self.__writableShareId = None
         self.__writableShare = None
