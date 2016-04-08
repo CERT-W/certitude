@@ -59,7 +59,7 @@ Edit `config.py`
 
 cert@solucom.fr
 
-&copy; Solucom 2015
+&copy; Solucom 2016
 
 
 ## Contributors
@@ -69,3 +69,4 @@ cert@solucom.fr
 - Jean MARSAULT
 - Vincent NGUYEN
 - Fabien SCHWEBEL
+- Antoine VALLEE
