@@ -924,7 +924,7 @@ def api_json():
 
             # Retries count (IOC)
             essais_ioc = param.get('retries_ioc')
-            if essais_ioc is not None > 0:
+            if essais_ioc is not None:
                 try:
                     assert 0 < int(essais_ioc) <= 10
                     retries_left_ioc = int(essais_ioc)
@@ -935,7 +935,7 @@ def api_json():
 
             # Retries count (hash)
             essais_hash = param.get('retries_hash')
-            if essais_hash is not None > 0:
+            if essais_hash is not None:
                 try:
                     assert 0 < int(essais_hash) <= 10
                     retries_left_hash = int(essais_hash)

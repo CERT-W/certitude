@@ -157,7 +157,7 @@ class EvaluatorInterface:
         queryContent = query
 
         res = ''
-        retryCount = 5
+        retryCount = 15
 
         # Sometimes, queries may return "" (empty result)
         # Happens randomly, so just retry until it does not happen anymore
