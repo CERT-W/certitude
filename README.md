@@ -13,9 +13,8 @@ CERTitude - The seeker of IOC
 
 ```batch
 cd dist
+pip install lxml-3.6.0-cp27-none-win32.whl
 pip install -r requirements.txt
-pycrypto-2.6.1.win32-py2.7.exe
-install-pyopenssl.bat
 ```
 
 

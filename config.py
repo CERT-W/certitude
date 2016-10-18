@@ -16,7 +16,7 @@ DOSSIER_LOG = '_log/'
 FORMAT_LOGS = '%(asctime)s %(name)-14s %(levelname)-8s %(message)s'
 
 # SSL configuration
-USE_SSL = True
+USE_SSL = False
 SSL_KEY_FILE = 'ssl\\server.pem.key'
 SSL_CERT_FILE = 'ssl\\server.pem.cer'
 

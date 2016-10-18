@@ -1,4 +1,5 @@
 impacket <= 0.9.13
+pycrypto
 pbkdf2
 flask
 flask-login
@@ -7,3 +8,4 @@ netaddr
 dnspython
 pyasn1
 lxml
+pyopenssl
