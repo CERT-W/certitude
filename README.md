@@ -58,9 +58,9 @@ Edit `config.py`
 
 ## Contact
 
-cert@solucom.fr
+cert@wavestone.com
 
-&copy; Solucom 2016
+&copy; Wavestone 2016
 
 
 ## Contributors
