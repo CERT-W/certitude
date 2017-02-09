@@ -1,6 +1,12 @@
 CERTitude - The seeker of IOC
 =============
 
+# Main purpose
+
+CERTitude is a Python-based tool which aims at assessing the compromised perimeter during incident response assignments.
+
+
+
 # Install guide
 
 ## Software Requirements
@@ -21,6 +27,8 @@ pip install -r requirements.txt
 
 
 ## Generating SSL certificate & private key
+
+**Note:** this steps requires openssl to be installed and in your `$PATH`
 
 ```batch
 cd ssl
