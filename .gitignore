@@ -6,3 +6,9 @@ certs/
 *.cer
 *.key
 *.crt
+bin/
+include/
+lib/
+local/
+pip-selfcheck.json
+share/
