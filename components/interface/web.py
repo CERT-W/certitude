@@ -3,10 +3,10 @@
 '''
     CERTitude: the seeker of IOC
     Copyright (c) 2016 CERT-W
-    
+
     Contact: cert@wavestone.com
     Contributors: @iansus, @nervous, @fschwebel
-    
+
     CERTitude is under licence GPL-2.0:
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License
@@ -52,7 +52,7 @@ except:
     pass
 
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify, Response, abort
-from flask.ext.login import LoginManager, login_required, login_user, logout_user, flash
+from flask_login import LoginManager, login_required, login_user, logout_user
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import DeclarativeMeta
@@ -163,7 +163,6 @@ def login():
                 session['logged_in'] = True
                 session['user_id'] = matchingUser.id
 
-                flash('Logged in')
                 return redirect(app.jinja_env.globals['url_for']('index'))
             else:
                 return render_template('session-login.html', error='User account is disabled')
@@ -175,7 +174,6 @@ def login():
 @app.route('/logout')
 def logout():
     session.pop('logged_in', None)
-    flash('Logged out')
     return redirect(app.jinja_env.globals['url_for']('index'))
 
 
@@ -200,7 +198,6 @@ def userSwitchActive(userid):
         u = dbsession.query(User).filter_by(id = userid).first()
 
         if u is None:
-            flash('This user does not exist')
             return redirect(app.jinja_env.globals['url_for']('users'))
 
         u.active = not u.active
@@ -298,7 +295,6 @@ def userDelete(userid):
         u = dbsession.query(User).filter_by(id = userid).first()
 
         if u is None:
-            flash('This user does not exist')
             return redirect(app.jinja_env.globals['url_for']('users'))
 
         dbsession.delete(u)
@@ -346,7 +342,6 @@ def wincredDelete(wincredid):
         wc = dbsession.query(WindowsCredential).filter_by(id=wincredid).first()
 
         if wc is None:
-            flash('This credential does not exist')
             return redirect(app.jinja_env.globals['url_for']('config'))
 
         dbsession.delete(wc)
@@ -364,7 +359,6 @@ def xmliocDelete(xmliocid):
         xi = dbsession.query(XMLIOC).filter_by(id=xmliocid).first()
 
         if xi is None:
-            flash('This IOC does not exist')
             return redirect(app.jinja_env.globals['url_for']('config'))
 
         dbsession.delete(xi)
@@ -382,7 +376,6 @@ def profileDelete(profileid):
         p = dbsession.query(ConfigurationProfile).filter_by(id=profileid).first()
 
         if p is None:
-            flash('This profile does not exist')
             return redirect(app.jinja_env.globals['url_for']('config'))
 
         dbsession.delete(p)
@@ -495,7 +488,6 @@ def xmliocAdd():
                 dbsession.commit()
                 return redirect(app.jinja_env.globals['url_for']('config'))
             else:
-                flash('\n'.join(errors))
                 return render_template('config-xmlioc-add.html', errors='\n'.join(errors), name=ioc_name)
     else:
         return redirect(app.jinja_env.globals['url_for']('login'))
@@ -540,7 +532,6 @@ def profileAdd():
                 dbsession.commit()
                 return redirect(app.jinja_env.globals['url_for']('config'))
             else:
-                flash('\n'.join(errors))
                 return render_template('config-profile-add.html', errors='\n'.join(errors), host_confidential=hc, name=request.form['name'], xmliocs=xi)
     else:
         return redirect(app.jinja_env.globals['url_for']('login'))
@@ -609,7 +600,7 @@ def iocjson(iocid):
     HASHevaluatorList = hash_modules.flatEvaluatorList if FLAT_MODE else hash_modules.logicEvaluatorList
 
     evaluatorList = dict(IOCevaluatorList.items() + HASHevaluatorList.items())
-    
+
     for name, classname in evaluatorList.items():
         allowedElements[name] = classname.evalList
 
@@ -717,20 +708,20 @@ def getInfosFromXML(content):
 
     xml = ET.fromstring(c)
     openiocparser.removeNS(xml)
-    
+
     for indic in xml.iter('IndicatorItem'):
-    
+
         guid = indic.attrib['id']
 
         context = indic.findall('Context')[0]
         search = context.attrib['search']
-        
+
         content = indic.findall('Content')[0]
         value = content.text
-        
+
         r['guids'][guid] = {'search':search, 'value':value}
         r['totalguids']+=1
-    
+
     return r
 
 @app.route('/static/data/results.csv/<int:batchid>')
@@ -846,7 +837,6 @@ def scanbatchAdd():
                 dbsession.commit()
                 return redirect(app.jinja_env.globals['url_for']('scan'))
             else:
-                flash('\n'.join(errors))
                 return render_template('scan-planification-batch-add.html', errors='\n'.join(errors), configuration_profiles=cp, windows_credentials=wc)
     else: #Not logged in
         return redirect(app.jinja_env.globals['url_for']('login'))
@@ -910,7 +900,7 @@ def api_json():
 
             if param_ip is not None and param_ip!='':
                 list.append((param_ip, 'ipn'))
-                
+
 
             if param_hostname is not None and param_hostname!='' :
                 list.append((param_hostname, 'host'))
@@ -992,19 +982,19 @@ def api_json():
                             # reponse['ips'][str(ip)] = 'invalid IP address'
                             # continue
                         # ip_int=0
-                
+
                 try:
-                
-                    if iptype[:2]=='ip':                   
+
+                    if iptype[:2]=='ip':
                         ipn = netaddr.IPNetwork(ip)
                     else:
                         ipn = [ip]
-                        
+
                     ipSubnet = str(ip) if iptype=='ipl' else subnet
 
                     for ipa in ipn:
                         nb_ip+=1
-                    
+
                         if param.get('force', None) is None:
                             limite_avant_nouvel_essai = datetime.datetime.now() - datetime.timedelta(0, SECONDES_POUR_RESCAN)
                             if dbsession.query(Result).filter(Result.ip == str(ipa), Result.finished >= limite_avant_nouvel_essai).count() > 0:
@@ -1013,7 +1003,7 @@ def api_json():
                             elif dbsession.query(Task).filter(Task.ip == str(ipa), Task.batch_id == batch, Task.date_soumis >= limite_avant_nouvel_essai).count() > 0:
                                 reponse['ips'][str(ipa)] = 'already requested a few moments ago'
                                 continue
-                        
+
                         nb_ip_ok+=1
                         tache = Task(
                             ip = str(ipa),
@@ -1030,20 +1020,20 @@ def api_json():
                             batch_id = batch
                         )
                         dbsession.add(tache)
-                        
+
                     if batch and len(batch) > 0 and not actualise:
                         reponse['ips'][str(ip)] = 'added to batch ' + batch
                     elif batch and len(batch) > 0 and actualise:
                         reponse['ips'][str(ip)] = 'added to batch ' + batch + ' for retry'
                     else:
                         reponse['ips'][str(ip)] = 'added to queue'
-                        
+
                     reponse['ips'][str(ip)] +=  ' (%d tries for iocscan, %d tries for hashscan)' % (retries_left_ioc, retries_left_hash)
-                        
+
                 except netaddr.core.AddrFormatError:
                     reponse['ips'][str(ip)] = ' not added to batch ' + batch + ': bad formatting)'
 
-            
+
             reponse['message'] = 'Requested scan of %d IP addresses, %d were OK' % (nb_ip, nb_ip_ok)
             dbsession.commit()
             return Response(
