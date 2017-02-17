@@ -107,6 +107,7 @@ FileItem        FilePath, Md5Sum, Sha1Sum, Sha256Sum
 
 - Aurélien BAUD
 - Adrien DEGRANGE
+- Thomas LABADIE
 - Jean MARSAULT
 - Vincent NGUYEN
 - Fabien SCHWEBEL
