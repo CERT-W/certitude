@@ -23,10 +23,13 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 '''
 
+import logging
+
 # Global
 # ======
 ## passage en mode debug : log plus d'infos sur le déroulement
 DEBUG = True
+CONSOLE_VERBOSE = logging.DEBUG
 DOSSIER_LOG = '_log/'
 FORMAT_LOGS = '%(asctime)s %(name)-14s %(levelname)-8s %(message)s'
 
