@@ -6,9 +6,13 @@ certs/
 *.cer
 *.key
 *.crt
+
+# VirtualEnv
 bin/
 include/
 lib/
 local/
 pip-selfcheck.json
 share/
+Scripts/
+Tcl/
