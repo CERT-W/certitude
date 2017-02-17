@@ -320,7 +320,7 @@ def demarrer_scanner(hWaitStop=None, batch=None):
 
     # No user or bad password
     if not u or hashPassword(password) != u.password:
-        logginghashscan.critical('Username or password incorrect, stopping the initialization...')
+        logginghashscan.critical('Username or password incorrect, stopping the initialization, press a key...')
         raw_input()
         return
 
