@@ -111,7 +111,10 @@ class RemoteCmd:
     #
     def __log__(self, debugLevel, message, exception=''):
 
-        m = self.__login + '@' + self.__ip + ' ' + message.decode('cp1252')
+        import inspect
+        func = inspect.currentframe().f_back.f_code
+        
+        m = self.__login + '@' + self.__ip + ' [' + func.co_name + '] ' + message.decode('cp1252')
 
         if exception!='':
             m += ' (%s)' % str(exception)
@@ -161,7 +164,7 @@ class RemoteCmd:
         # Try to setup the program
         try:
             self.__setup(ip, login, password, domain)
-        except smbconnection.SessionError,e :
+        except Exception,e :
             self.__log__(LEVEL_CRITICAL,'Error during setup',e)
             raise e
             
@@ -188,7 +191,7 @@ class RemoteCmd:
             self.__writableShare = self.__findWritableShare()
         except WritableShareException,e:
             self.__log__(LEVEL_CRITICAL,'',e)
-            self.__del__(False)
+            self.__exit(True)
             return
 
         self.__writableShareId = self.__connection.connectTree(self.__writableShare)
@@ -235,18 +238,16 @@ class RemoteCmd:
     #   called by CRITICAL log and by del actions
     #   should be called upon program termination by the GC
     #
-    def __del__(self, fromError = False):
+    def __exit(self, fromError=False):
 
         try:
             self.__unsetup()
-
         except Exception, e:
             self.logger.critical('Cleanup error: '+str(e).replace('\n', ' - '))
+            raise Exception('Handler %s had to exit, remote cleanup might not be perfect...' % (self.__login + '@' + self.__ip))
 
         if fromError:
-            sys.exit(1)
-
-
+            raise Exception('Handler %s had to be shutdown' % (self.__login + '@' + self.__ip))
 
     ######
     #
@@ -332,7 +333,7 @@ class RemoteCmd:
             return resp['ContextHandle']
         except Exception, e:
             self.__log__(LEVEL_CRITICAL,'Cannot open Service Manager',e)
-            self.__del__(False)
+            self.__exit(True)
 
 
     ######
@@ -353,7 +354,7 @@ class RemoteCmd:
             if e.get_error_code()!= svcctl.ERROR_SERVICE_DOES_NOT_EXISTS:
                 # Error furing the check
                 self.__log__(LEVEL_CRITICAL, 'Cannot check for service '+serviceName, e)
-                self.__del__(False)
+                self.__exit(True)
                 return
         else:
             # Service is already open, remove it
@@ -379,7 +380,7 @@ class RemoteCmd:
         except svcctl.SVCCTLSessionError,e:
             # bad for us...
             self.__log__(LEVEL_CRITICAL, 'Unable to create service '+RemoteCmd.REMCOMSVC_SERVICE_NAME, e)
-            self.__del__(False)
+            self.__exit(True)
 
 
 
@@ -392,7 +393,7 @@ class RemoteCmd:
             self.__rpcsvc.StartServiceW(self.__service['ContextHandle'])
         except svcctl.SVCCTLSessionError,e:
             self.__log__(LEVEL_CRITICAL, 'Unable to start service '+RemoteCmd.REMCOMSVC_SERVICE_NAME, e)
-            self.__del__(False)
+            self.__exit(True)
 
 
 
@@ -418,7 +419,7 @@ class RemoteCmd:
 
         if tries == 0:
             self.__log__(LEVEL_CRITICAL, 'Unable to create named pipe')
-            self.__del__(False)
+            self.__exit(True)
             return
 
         return self.__connection.openFile(tid, pipe, accessMask, creationOption = 0x40, fileAttributes = 0x80)
@@ -540,7 +541,7 @@ class RemoteCmd:
             # File did not exist
             if e.getErrorCode() != nt_errors.STATUS_OBJECT_NAME_NOT_FOUND:
                 self.__log__(LEVEL_CRITICAL, 'Cannot open file '+filename+': ',e)
-                self.__del__(False)
+                self.__exit(True)
                 return
 
         try:
@@ -550,7 +551,7 @@ class RemoteCmd:
         except smbconnection.SessionError, e:
             # or not ...
             self.__log__(LEVEL_CRITICAL, 'Cannot create file '+filename+': ',e)
-            self.__del__(False)
+            self.__exit(True)
 
 
     ######
@@ -563,7 +564,7 @@ class RemoteCmd:
             self.__connection.closeFile(self.__writableShareId, fid)
         except smbconnection.SessionError, e:
             self.__log__(LEVEL_CRITICAL, 'Cannot close file '+fid+': ',e)
-            self.__del__(False)
+            self.__exit(True)
 
 
     ######
@@ -585,7 +586,7 @@ class RemoteCmd:
             if e.getErrorCode() != nt_errors.STATUS_OBJECT_NAME_NOT_FOUND:
                 # because of unknown error
                 self.__log__(LEVEL_CRITICAL, 'Cannot stat file '+filename+': ',e)
-                self.__del__(False)
+                self.__exit(True)
             else:
                 # because file existed
                 return False
@@ -621,7 +622,7 @@ class RemoteCmd:
 
         except smbconnection.SessionError, e:
             self.__log__(LEVEL_CRITICAL, 'Cannot read '+filename+': ',e)
-            self.__del__(False)
+            self.__exit(True)
 
 
     ######
@@ -651,7 +652,7 @@ class RemoteCmd:
             return bytesWritten
         except smbconnection.SessionError, e:
             self.__log__(LEVEL_CRITICAL, 'Cannot write in '+filename+': ',e)
-            self.__del__(False)
+            self.__exit(True)
 
 
     ######
@@ -668,7 +669,7 @@ class RemoteCmd:
         except smbconnection.SessionError, e:
             self.__log__(errorLevel, 'Cannot delete '+filename+': ',e)
             if errorLevel == LEVEL_CRITICAL:
-                self.__del__(False)
+                self.__exit(True)
 
 
     ######
@@ -686,7 +687,7 @@ class RemoteCmd:
             self.__log__(LEVEL_INFODBG, 'Dropped file ' + remoteName)
         except IOError:
             self.__log__(LEVEL_CRITICAL, 'File '+lpath+' was not found')
-            self.__del__(False)
+            self.__exit(True)
 
     ######
     #
@@ -703,7 +704,7 @@ class RemoteCmd:
             self.__log__(LEVEL_INFODBG, 'Retrieved file ' + remoteName)
         except IOError:
             self.__log__(LEVEL_CRITICAL, 'File '+lpath+' could not be created')
-            self.__del__(False)
+            self.__exit(True)
 
 
     '''
@@ -725,7 +726,7 @@ class RemoteCmd:
                 return letter+':'
 
         self.__log__(LEVEL_CRITICAL, 'Cannot find suitable network drive')
-        self.__del__(False)
+        self.__exit(True)
 
     ######
     #
