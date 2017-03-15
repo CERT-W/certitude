@@ -129,7 +129,17 @@
                         .attr("text-anchor", function(d) { return d.children || d._children ? "end" : "start"; })
                         .text(function(d) { return d.name; })
                         .style("fill-opacity", 1e-6);
-                        
+
+                nodeEnter.append("text")
+                        .attr("x", function(d) { return d.children || d._children ? -10 : 10; })
+                        .attr("dy", "1.5em")
+                        .attr("text-anchor", function(d) { return d.children || d._children ? "end" : "start"; })
+                        .text(function(d) {
+                            if (typeof d.indicator_data !== 'undefined' && d.indicator_data !== 'null' && d.indicator_data != '') return 'Selected data: ' + d.indicator_data;
+                            return '';
+                        })
+                        .style("fill-opacity", 1e-6);
+
 
                 // Transition nodes to their new position.
                 var nodeUpdate = node.transition()
@@ -140,7 +150,7 @@
                         .attr("r", 4.5)
                         .attr("class", function(d) { return "node " + selectClass(d); });
 
-                nodeUpdate.select("text")
+                nodeUpdate.selectAll("text")
                         .style("fill-opacity", 1);
 
                 // Transition exiting nodes to the parent's new position.
@@ -152,7 +162,7 @@
                 nodeExit.select("circle")
                         .attr("r", 1e-6);
 
-                nodeExit.select("text")
+                nodeExit.selectAll("text")
                         .style("fill-opacity", 1e-6);
 
                 // Update the links

@@ -37,6 +37,7 @@ class IOCTree():
         self.isLeaf = (children==[])
         self.nodes = children
         self.infected = False
+        self.indicator_data = None
 
 
     #########
@@ -108,7 +109,7 @@ class IOCTree():
     def json2(self):
 
         if self.isLeaf:
-            return {'name':str(self.name), 'infected':self.name.infected, 'guid':self.name.id}
+            return {'name':str(self.name), 'infected':self.name.infected, 'indicator_data': self.name.indicator_data, 'guid':self.name.id}
         else:
             children = []
             for c in self.nodes:
@@ -120,6 +121,7 @@ class IOCTree():
         if self.isLeaf:
             if self.name.id in guids:
                 self.name.infected = True
+                self.name.indicator_data = guids[self.name.id]
                 return True
 
             return False
@@ -160,22 +162,24 @@ class IOC:
         'ServiceItem' : 'SERVICE'
     }
 
-    def __init__(self, ioc_id, condition, document, search, eltType, value):
+    def __init__(self, ioc_id, condition, document, search, select, eltType, value):
 
         self.id = ioc_id
         self.condition = condition
         self.document = document
         self.search = search.replace(document+'/', '')
+        self.select = select
         self.eltType = eltType
         self.value = value
         self.uid = sha.new(condition+document+search+value).hexdigest()[:8]
         self.infected = False
+        self.indicator_data = ''
 
     def __repr__(self):
         return self.__str__()
 
     def __str__(self):
-        return self.document+'/'+self.search+'['+self.condition+'='+self.value+']'#-'+self.uid
+        return self.document + '/' + self.search + '[' + self.condition + '=' + self.value + '] ' # + self.select    # -'+self.uid
 
 
 ########

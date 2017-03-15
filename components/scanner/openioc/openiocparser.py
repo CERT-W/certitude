@@ -193,10 +193,11 @@ class OpenIOCParser:
 
         document = context.attrib['document']
         search = context.attrib['search']
+        select = context.attrib['select'] if 'select' in context.attrib.keys() else ''
         eltType = content.attrib['type']
         value = content.text
 
-        return ioc.IOC(ioc_id, condition, document, search, eltType, value)
+        return ioc.IOC(ioc_id, condition, document, search, select, eltType, value)
 
     ''' GETTER getAtomicIOC '''
     def getAtomicIOC(self):

@@ -54,3 +54,4 @@ class IOCDetection(Base):
         backref='iocdetections',)
     xmlioc_id = Column(Integer)
     indicator_id = Column(String) # Length should be 62
+    indicator_data = Column(String)

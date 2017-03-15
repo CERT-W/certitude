@@ -660,9 +660,9 @@ def hostjson(hostid):
     ioc_detections = dbsession.query(IOCDetection).filter_by(result_id = result.id).all()
 
     # list of GUID per IOC
-    guids = {i:[] for i in ioc_list}
+    guids = {i:{} for i in ioc_list}
     for iocd in ioc_detections:
-        guids[iocd.xmlioc_id].append(iocd.indicator_id)
+        guids[iocd.xmlioc_id][iocd.indicator_id] = iocd.indicator_data
 
     tree = {'name':task.ip, 'children':[], 'infected': False}
 

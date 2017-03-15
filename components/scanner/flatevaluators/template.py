@@ -155,23 +155,34 @@ class EvaluatorInterface:
         rc = self.getRemoteCommand()
         wd = self.getWD()
 
+        select = ioc.select.replace('%s/'%ioc.document, '')
+
+        self.log('IOC : %s' % (ioc), logging.DEBUG)
+
         # Hey, I don't know how to search for that
-        if (ioc.search.lower() not in self.__evalList) or (ioc.condition not in conditionList.keys()):
+        if (ioc.search.lower() not in self.__evalList)\
+                or (ioc.condition not in conditionList.keys()):
             self.log('%s/%s is not in evaluation list' % (ioc.search, ioc.condition), logging.WARNING)
-            return evltResult.UNDEF
+            return (evltResult.UNDEF, None)
 
+        if select and select.lower() not in self.__evalList:
+            self.log('Could not select %s (not in evaluation list)' % (ioc.select), logging.WARNING)
+            select = ''
 
-        category = ioc.search.replace('%s/'%ioc.document, '')
+        category = ioc.search.replace('%s/' % ioc.document, '')
         conditionTerm = conditionList[ioc.condition]
 
         # Escape '\' not using REGEX
         condition =  conditionTerm % self.escapeValue(ioc.value) if ioc.condition != 'regex' else conditionTerm % ioc.value
 
         # Craft query
-        # SELECT COUNT *  FROM <table> WHERE <index> LIKE <value> (for example)
-        queryStart = 'SELECT COUNT(*) FROM %s WHERE ' % (self.__tableName)
+        # > selecting count by default, otherwise selecting the user defined element
+        # SELECT COUNT *  FROM <table> WHERE <index> LIKE <value> (default example)
+        # SELECT FilePath FROM <table> WHERE <index> LIKE <value> (user defined example)
+        querySelect = 'COUNT(*)' if not select else select
+        queryStart = 'SELECT %s FROM %s WHERE ' % (querySelect, self.__tableName)
         queryVariable = '`%(index)s` %(clause)s' % {'index' : category, 'clause': (condition)}
-        queryEnd = ';'
+        queryEnd = ';' if not select else ' UNION SELECT CHAR(1);'
         query = queryStart + queryVariable + queryEnd
 
         # Load PCRE for REGEX support
@@ -206,13 +217,16 @@ class EvaluatorInterface:
             self.log('query returned "%s"' % res, logging.DEBUG)
 
             retryCount -= 1
+
         ret = evltResult.TRUE
         if res == '':
             ret = evltResult.UNDEF
-        elif res == '0':
+        elif res == '0' or res == '\x01':
             ret = evltResult.FALSE
 
-        return ret
+        resData = res.splitlines()[1:] if select else None
+
+        return (ret, resData)
 
     # Escapes the value
     def escapeValue(self, value):

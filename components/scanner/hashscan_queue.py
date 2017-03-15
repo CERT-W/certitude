@@ -57,6 +57,8 @@ from helpers.misc_models import ConfigurationProfile, WindowsCredential, XMLIOC,
 from helpers.helpers import hashPassword, checksum
 import helpers.crypto as crypto
 import getpass
+import json
+import traceback
 
 try:
     chemin = path.join(path.dirname(path.abspath(__file__)), '..', '..')
@@ -195,17 +197,18 @@ def scan(targetObject, IOCObjects, hostConfidential):
 
                         # Use TEMP_FILE for query transport to remote host
                         # get the query result in "res"
-                        res = evlt.eval(TEMP_FILE)
+                        res, resData = evlt.eval(TEMP_FILE)
 
                     # We don't know how to evaluate it, too bad...
                     else:
                         logginghashscan.info('Setting result=UNDEFINED for '+leaf.document)
                         res = hash_modules.FlatEvltResult.UNDEF
+                        resData = ''
 
                     # Store result for IOC if we ever need to evaluate it again
                     result[uid] = hash_modules.FlatEvltResult._str(res)
 
-                raw_results[leaf.id] = {'res':result[uid], 'iocid':IOCid}
+                raw_results[leaf.id] = {'res':result[uid], 'iocid':IOCid, 'data': resData}
 
             logginghashscan.info('Research for hashes in %s has ended' % IOCObject['name'])
 
@@ -296,7 +299,7 @@ def analyse(resultats_scan, tache):
             if dic['res']!='True':
                 continue
 
-            id = IOCDetection(result_id = r.id, indicator_id = ioc_id, xmlioc_id = dic['iocid'])
+            id = IOCDetection(result_id = r.id, indicator_id = ioc_id, indicator_data = json.dumps(dic['data']), xmlioc_id = dic['iocid'])
             session.add(id)
 
         session.commit()
@@ -508,6 +511,7 @@ def demarrer_scanner(hWaitStop=None, batch=None):
             halt = True
         except Exception, e:
             logginghashscan.error('Exception caught : %s, %s, %s' % (repr(e), str(e.message), str(e)))
+
 
             # Cancel changes and unreserve task
             session.rollback()
