@@ -153,12 +153,12 @@ table.list td
     padding-left:5px;
     padding-right:5px;
     text-align:center;
-    border: 1px solid #004780;
+    border: 1px solid #503078;
     vertical-align:middle;
 }
 
 tr.table_headline td {
-    background-color:#004780;
+    background-color:#503078;
     color:white;
     font-weight:bold;
     border:1px solid white;
