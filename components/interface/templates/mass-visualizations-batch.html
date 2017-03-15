@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+
+{% block main %}
+
+<h1 style="margin-top:50px;">CERTitude - Results: Batch {{batch.name}} (mass visualization)</h1>
+
+{% if errors %}
+<br/><pre class="error">{{ errors }}</pre>
+{% endif %}
+
+<div style="margin-top:20px">	
+        {{ bokeh_script|safe }}
+</div>
+<br />
+
+
+{% endblock%}

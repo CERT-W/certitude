@@ -45,6 +45,8 @@ import datetime
 import urllib
 import sqlite3
 from math import log
+import subprocess
+import atexit
 try:
     import win32event
     import win32security
@@ -69,6 +71,10 @@ import components.scanner.openioc.openiocparser as openiocparser
 import helpers.iocscan_modules as ioc_modules
 import helpers.hashscan_modules as hash_modules
 import xml.etree.ElementTree as ET
+
+from bokeh.embed import autoload_server
+from bokeh.client import pull_session
+
 
 # Set up logger
 loggingserver = logging.getLogger('api')
@@ -569,6 +575,35 @@ def campaignvisualizationbatch(batchid):
             return render_template('campaign-visualizations-batch.html', batch = batch)
     else:
         return redirect(app.jinja_env.globals['url_for']('login'))
+
+
+bokeh_process = subprocess.Popen(
+    ['bokeh', 'serve', 'crossbokeh.py'],
+    stdout=subprocess.PIPE)
+
+@atexit.register
+def kill_server():
+    bokeh_process.kill()
+
+
+@app.route('/massvisualizations/<int:batchid>')
+def massvisualizationbatch(batchid):
+    if 'logged_in' in session:
+        batch = dbsession.query(Batch).filter_by(id = batchid).first()
+
+        if batch is None:
+            return redirect(app.jinja_env.globals['url_for']('campaignvisualizations'))
+        else:
+            csv_url =  url_for('static', filename='data/results.csv/' + str(batch.id))
+
+            # iframe = '<iframe src="http://localhost:5006/crossbokeh?batchid={}" style="position: fixed;width:100%;height:100%;border:none;overflow-y: scroll;overflow-x: hidden;margin:0;padding:0;overflow:hidden;" frameborder="0" scrolling="yes" marginheight="0" marginwidth="0"></iframe>'.format(batchid)
+            iframe = '<iframe src="http://localhost:5006/crossbokeh?batchid={}" style="width:900px; height: 1000px; margin: 0 auto; display:block;" frameborder="0" scrolling="no" marginheight="0" marginwidth="0"></iframe>'.format(batchid)
+
+            return render_template('mass-visualizations-batch.html', bokeh_script=iframe, batch = batch)
+
+    else:
+        return redirect(app.jinja_env.globals['url_for']('login'))
+
 
 
 @app.route('/ioc/<int:iocid>')
