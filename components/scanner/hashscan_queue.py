@@ -243,6 +243,7 @@ def scan(targetObject, IOCObjects, hostConfidential):
         a = os.popen('rmdir /s %s' % os.path.join(IOC_COMPONENT_ROOT, hostConfidential_LOCALNAME)).read()
 
     RemCom.unsetNet()
+    RemCom.exit()
 
     logginghashscan.info('Handler %s has gracefully ended' % HANDLER_NAME)
 

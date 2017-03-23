@@ -248,6 +248,10 @@ class RemoteCmd:
         if fromError:
             raise Exception('Handler %s had to be shutdown' % (self.__login + '@' + self.__ip))
 
+            
+    def exit(self):
+        self.__exit()
+            
     ######
     #
     #   Unsetup function
