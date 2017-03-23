@@ -3,7 +3,7 @@ CERTitude - Roadmap
 
 ## Short-term
 
-* Fix AV detection of RemComSvc
+* Test new RemComSvc
 * New modules!!!
 
 
