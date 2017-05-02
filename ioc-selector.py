@@ -16,7 +16,7 @@ selectors = {'ServiceItem': ['descriptiveName', 'mode', 'path', 'pathmd5sum', 's
              'PortItem': ['protocol', 'localIP', 'localPort', 'remoteIP', 'remotePort', 'state', 'pid'],
              'PrefetchItem': ['PrefetchHash', 'ApplicationFileName', 'ReportedSizeInBytes', 'SizeInBytes',
                               'TimesExecuted', 'FullPath'],
-             'ProcessItem': ['pid', 'parentpid', 'UserSID', 'Username', 'name', 'path', 'moduleList'],
+             'ProcessItem': ['pid', 'parentpid', 'UserSID', 'Username', 'name', 'path', 'HandleList/Handle/Type', 'HandleList/Handle/Name'],
              'MemoryItem': ['pid', 'parentpid', 'name', 'page_addr', 'page_size', 'access_read', 'access_write',
                             'access_execute', 'access_copy_on_write']
              }
