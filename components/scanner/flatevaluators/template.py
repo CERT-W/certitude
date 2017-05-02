@@ -180,7 +180,7 @@ class EvaluatorInterface:
         # SELECT COUNT *  FROM <table> WHERE <index> LIKE <value> (default example)
         # SELECT FilePath FROM <table> WHERE <index> LIKE <value> (user defined example)
         querySelect = 'COUNT(*)' if not select else select
-        queryStart = 'SELECT %s FROM %s WHERE ' % (querySelect, self.__tableName)
+        queryStart = 'SELECT `%s` FROM %s WHERE ' % (querySelect, self.__tableName)
         queryVariable = '`%(index)s` %(clause)s' % {'index' : category, 'clause': (condition)}
         queryEnd = ';' if not select else ' UNION SELECT CHAR(1);'
         query = queryStart + queryVariable + queryEnd
