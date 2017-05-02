@@ -12,7 +12,7 @@
     <strong><a href="{{ url_for('scanbatchAdd') }}">Add a new batch...</a></strong>
     <br />
     <br />
-    Or select an existing batch (choose <b>mass visualization if you have lots of data</b>:
+    Or select an existing batch (choose <b>mass visualization if you have lots of data</b>):
     <table style="margin-left:20px; font-weight:bold">
         {% for batch in batches %}
             <tr><td>- <a href="{{url_for('campaignvisualizationbatch', batchid=batch.id)}}">{{batch.name}}</a> <a href="{{url_for('massvisualizationbatch', batchid=batch.id)}}">(mass)</a></td></tr>
