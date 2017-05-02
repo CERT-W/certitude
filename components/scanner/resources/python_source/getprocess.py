@@ -23,7 +23,7 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 '''
 
-import os, re, psutil
+import os, re, psutil, time
 
 SIDS = {}
 
@@ -38,8 +38,49 @@ def sanitize(username):
     return ret
 
 
-#['pid', 'parentpid', 'UserSID', 'Username', 'name', 'path', 'moduleList']
-def getPsList():
+def getHandles():
+    handles = os.popen('handle /accepteula -a -nobanner').read().split('\r\n')
+
+    HANDLE_SEARCH = ['File', 'Directory', 'Process', 'Key', 'Mutant']
+    CURRENT_PROCESS = None
+    SET_PROCESS = False
+
+
+    handles_res = {}
+
+    for handle in handles:
+        
+        if handle == '------------------------------------------------------------------------------':
+            SET_PROCESS = True
+            continue
+            
+        if SET_PROCESS:
+            SET_PROCESS = False
+            
+            CURRENT_PROCESS = re.sub('^.+pid: ([0-9]+) .+$', '\\1', handle)
+            handles_res[CURRENT_PROCESS] = []
+            continue
+            
+        if CURRENT_PROCESS is not None:
+        
+            if handle=='':
+                continue
+                
+            _, handle = handle.split(': ', 1)
+            HANDLE_TYPE, HANDLE_NAME = handle.split(' ', 1)
+
+            if HANDLE_TYPE not in HANDLE_SEARCH:
+                continue
+                
+            HANDLE_NAME = re.sub('\s+(\([RWD-]+\))?\s*', '', HANDLE_NAME)
+            
+            handles_res[CURRENT_PROCESS].append((HANDLE_TYPE, HANDLE_NAME))
+            
+    return handles_res
+    
+
+#['pid', 'parentpid', 'UserSID', 'Username', 'name', 'path', 'handletype', 'handlename']
+def getPsList(handles):
 
     ret = []
 
@@ -87,17 +128,24 @@ def getPsList():
             pass
 
         #CMDLINE = process.cmdline()
-        MODULE_LIST = '-'
-
-        i+=1
-        ret.append( [ i, PID, PPID, USERSID, USERNAME, NAME, PATH, MODULE_LIST ] )
+        HANDLE_TYPE = '-'
+        HANDLE_NAME = '-'
+        
+        sPid = str(PID)
+        if sPid not in handles.keys():
+            handles[sPid] = [('-', '-')]
+        
+        for HANDLE_TYPE, HANDLE_NAME in handles[sPid]:
+            ret.append( [ i, PID, PPID, USERSID, USERNAME, NAME, PATH, HANDLE_TYPE, HANDLE_NAME ] )
+            i+=1
 
     return ret
 
 def main():
 
-    process = getPsList()
-
+    handles = getHandles()
+    process = getPsList(handles)
+    
     print '\n'.join(['\t'.join([str(f) for f in e]) for e in process])
 
 if __name__=='__main__':

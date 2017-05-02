@@ -8,7 +8,8 @@ CREATE TABLE process
 	`Username` VARCHAR(512),
 	`name` VARCHAR(384),
 	`path` VARCHAR(384),
-	`moduleList` TEXT
+	`HandleList/Handle/Type` VARCHAR(31),
+	`HandleList/Handle/Name` VARCHAR(255)
 );
 
 .separator '	'
