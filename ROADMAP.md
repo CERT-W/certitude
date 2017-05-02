@@ -10,7 +10,6 @@ CERTitude - Roadmap
 ## Medium-term
 
 * Yara support
-* Unix target
 
 
 ## (Very) Long-term
