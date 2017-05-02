@@ -207,7 +207,8 @@ def scan(targetObject, IOCObjects, hostConfidential):
                     # Store result for IOC if we ever need to evaluate it again
                     result[uid] = ioc_modules.FlatEvltResult._str(res)
 
-                raw_results[leaf.id] = {'res':result[uid], 'iocid':IOCid, 'data': resData}
+
+                raw_results[leaf.id] = {'res':result[uid], 'iocid':IOCid, 'data': [e.decode(sys.stdout.encoding) for e in resData]}
 
             loggingiocscan.info('Research for %s has ended' % IOCObject['name'])
 
@@ -511,7 +512,10 @@ def demarrer_scanner(hWaitStop=None, batch=None):
         except KeyboardInterrupt:
             halt = True
         except Exception, e:
-            loggingiocscan.error('Exception caught : %s, %s, %s' % (repr(e), str(e.message), str(e)))
+        
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            loggingiocscan.error('Exception caught : %s, %s, %s [function %s, line %d]' % (repr(e), str(e.message), str(e), fname, exc_tb.tb_lineno))
 
             # Cancel changes and unreserve task
             session.rollback()
