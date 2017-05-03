@@ -1,0 +1,3 @@
+[submodule "dist/plyara"]
+	path = dist/plyara
+	url = https://github.com/8u1a/plyara

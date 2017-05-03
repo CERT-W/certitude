@@ -33,6 +33,10 @@ virtualenv .
 
 ```batch
 cd dist
+cd plyara
+python setup.py build
+python setyp.py install
+cd ..
 pip install --upgrade pip
 pip install lxml-3.6.0-cp27-none-win32.whl	# Under ...
 .\pycrypto-2.6.1.win32-py2.7.exe			# ... Windows
@@ -105,6 +109,8 @@ FileItem        FilePath, Md5Sum, Sha1Sum, Sha256Sum
 
 ## Contributors
 
+### Developers 
+
 - Aurélien BAUD
 - Adrien DEGRANGE
 - Thomas LABADIE
@@ -112,3 +118,8 @@ FileItem        FilePath, Md5Sum, Sha1Sum, Sha256Sum
 - Vincent NGUYEN
 - Fabien SCHWEBEL
 - Antoine VALLEE
+
+
+### External dependencies
+
+- Plyara : https://github.com/8u1a/plyara/

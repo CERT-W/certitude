@@ -70,8 +70,37 @@
                     </tr>
                 {% endfor %}
             </table>
-            <br /><br />
+            <br />
             <a href="{{url_for('xmliocAdd')}}">Add a new IOC...</a>
+            <br /><br /><br />
+            <table class="list">
+                <tr class="table_headline">
+                    <td>Name</td>
+                    <td>Date added</td>
+                    <td>Delete</td>
+                </tr>
+                {% for yararule in yararules %}
+                    <tr>
+                        <td>
+                            {{yararule.name}}
+                            &nbsp;
+                            <img 
+                                src="{{ url_for('static', filename='img/open.svg') }}" 
+                                onMouseOver="showFloatingDiv('{{yararule.rules}}', event)" 
+                                onMouseOut="hideFloatingDiv()"/>
+                        </td>
+                        <td>{{yararule.date_added}}</td>
+                        <td>
+                            <form class="inline" action="{{url_for('yaraDelete', yaraid=yararule.id)}}" method="POST">
+                               <a href="#" onclick="this.parentNode.submit()">[X]</a>
+                               <input name='{{ csrf_token_name }}' type="hidden" value="{{ csrf_token() }}">
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </table>
+            <br />
+            <a href="{{url_for('yaraAdd')}}">Add new Yara rules...</a>
         </td>
         <td>
             <br />
@@ -83,8 +112,7 @@
                         Confidential
                     </td>
                     <td>
-                        IOC<br />
-                        List
+                        Lists
                     </td>
                     <td>Delete</td>
                 </tr>
@@ -92,7 +120,19 @@
                     <tr>
                         <td>{{profile.name}}</td>
                         <td>{{profile.host_confidential}}</td>
-                        <td><img src="{{ url_for('static', filename='img/open.svg') }}" onMouseOver="showFloatingDiv('{{iocdesclist[profile.id]}}', event)" onMouseOut="hideFloatingDiv()"/></td>
+                        <td>
+                            IOC&nbsp;
+                            <img 
+                                src="{{ url_for('static', filename='img/open.svg') }}" 
+                                onMouseOver="showFloatingDiv('{{iocdesclist[profile.id]}}', event)" 
+                                onMouseOut="hideFloatingDiv()"/>
+                            <br />
+                            Yara&nbsp;
+                            <img 
+                                src="{{ url_for('static', filename='img/open.svg') }}" 
+                                onMouseOver="showFloatingDiv('{{yaradesclist[profile.id]}}', event)" 
+                                onMouseOut="hideFloatingDiv()"/>
+                        </td>
                         <td>
                             <form class="inline" action="{{url_for('profileDelete', profileid=profile.id)}}" method="POST">
                                <a href="#" onclick="this.parentNode.submit()">[X]</a>

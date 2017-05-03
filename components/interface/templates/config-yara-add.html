@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+
+{% block main %}
+
+<h1 style="margin-top:50px;">CERTitude - New Yara rule</h1>
+
+{# <div style='width:600px;margin-top:20px;'> #}
+
+{% if errors %}
+<br/><pre class="error">{{ errors }}</pre>
+{% endif %}
+
+{# <div style='width:600px;margin-top:20px;'> #}
+<div style="margin-top:20px;">
+
+    <form enctype="multipart/form-data" action="{{url_for('yaraAdd')}}" method="POST">
+        <table class="form_table">
+            <tr>
+                <td>Name :</td>
+                <td><input name="name" value="{{name}}"/></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td><input name="content" type="file" /></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>
+                    <input type="submit" class="btn btn-primary" value="Add this Yara rule" />
+                </td>
+            </tr>
+        </table>
+        <input name='{{ csrf_token_name }}' type="hidden" value="{{ csrf_token() }}">
+    </form>
+
+</div>
+
+{% endblock%}
+

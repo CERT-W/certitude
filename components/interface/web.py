@@ -64,6 +64,7 @@ from config import IOC_MODE, DEBUG, USE_SSL, SSL_KEY_FILE, SSL_CERT_FILE, BASE_D
 from helpers.queue_models import Task
 from helpers.results_models import Result, IOCDetection
 from helpers.misc_models import User, ConfigurationProfile, WindowsCredential, XMLIOC, Batch, GlobalConfig
+from helpers.yara_models import YaraRule, YaraDetection
 from helpers.helpers import hashPassword, checksum, verifyPassword
 import helpers.crypto as crypto
 
@@ -74,6 +75,8 @@ import xml.etree.ElementTree as ET
 
 from bokeh.embed import autoload_server
 from bokeh.client import pull_session
+
+from plyara.plyara import PlyaraParser
 
 
 # Set up logger
@@ -322,19 +325,37 @@ def config():
         configuration_profiles = dbsession.query(ConfigurationProfile).order_by(ConfigurationProfile.name.asc())
         windows_credentials = dbsession.query(WindowsCredential).order_by(WindowsCredential.domain.asc(), WindowsCredential.login.asc())
         xmliocs = dbsession.query(XMLIOC).order_by(XMLIOC.date_added.desc())
+        yararules = dbsession.query(YaraRule).order_by(YaraRule.date_added.desc())
 
-        ref = {}
+        iocref = {}
         for xmlioc in xmliocs:
-            ref[str(xmlioc.id)] = xmlioc.name + ' - ' + str(xmlioc.date_added)
+            iocref[str(xmlioc.id)] = xmlioc.name + ' - ' + str(xmlioc.date_added)
+            
+        yararef = {}
+        for yararule in yararules:
+            yararef[str(yararule.id)] = yararule.name + ' - ' + str(yararule.date_added)
 
         iocdesclist = {}
         for cp in configuration_profiles:
             if len(cp.ioc_list)==0:
                 iocdesclist[cp.id] = ''
                 continue
-            iocdesclist[cp.id] = '||'.join([ref[str(id)] for id in cp.ioc_list.split(',')])
+            iocdesclist[cp.id] = '||'.join([iocref[str(id)] for id in cp.ioc_list.split(',')])
 
-        return render_template('config-main.html', xmliocs = xmliocs, windows_credentials = windows_credentials, configuration_profiles = configuration_profiles, iocdesclist = iocdesclist)
+        yaradesclist = {}
+        for cp in configuration_profiles:
+            if len(cp.ioc_list)==0:
+                yaradesclist[cp.id] = ''
+                continue
+            yaradesclist[cp.id] = '||'.join([yararef[str(id)] for id in cp.yara_list.split(',')])
+
+        return render_template('config-main.html', 
+                                    yararules = yararules,
+                                    xmliocs = xmliocs, 
+                                    windows_credentials = windows_credentials, 
+                                    configuration_profiles = configuration_profiles, 
+                                    iocdesclist = iocdesclist,
+                                    yaradesclist = yaradesclist)
     else:
         return redirect(app.jinja_env.globals['url_for']('login'))
 
@@ -504,9 +525,10 @@ def profileAdd():
     if 'logged_in' in session:
 
         xi = dbsession.query(XMLIOC).order_by(XMLIOC.name.asc())
+        yr = dbsession.query(YaraRule).order_by(YaraRule.name.asc())
 
         if request.method == 'GET':
-            return render_template('config-profile-add.html', xmliocs = xi)
+            return render_template('config-profile-add.html', xmliocs = xi, yararules = yr)
         else:
             success = True
             errors = []
@@ -515,10 +537,12 @@ def profileAdd():
 
             profile_name = request.form['name']
             ioc_selected_list = ','.join(request.form.getlist('ioc_list'))
+            yara_selected_list = ','.join(request.form.getlist('yara_list'))
             cp = ConfigurationProfile(
                     name=profile_name,
                     host_confidential=hc,
-                    ioc_list=ioc_selected_list)
+                    ioc_list=ioc_selected_list,
+                    yara_list=yara_selected_list)
 
             if len(profile_name) <= 0:
                 success = False
@@ -528,10 +552,6 @@ def profileAdd():
                 if existing_profile_name is not None:
                     success = False
                     errors.append("Profile name already exists.")
-
-            if len(ioc_selected_list) <= 0:
-                success = False
-                errors.append("You must select at least one IOC.")
 
             if success:
                 dbsession.add(cp)
@@ -1087,6 +1107,69 @@ def api_json():
         return redirect(app.jinja_env.globals['url_for']('login'))
 
 
+    # YARA
+
+@app.route('/config/yara/add',methods=['GET','POST'])
+def yaraAdd():
+    if 'logged_in' in session:
+        if request.method == 'GET':
+            return render_template('config-yara-add.html')
+        else:
+            success = True
+            errors = []
+
+            content = request.files['content'].stream.read()
+            yp = PlyaraParser()
+            rules = yp.parseString(content)
+            rules = [e['rule_name'] for e in rules]
+
+            name = request.form['name']
+            yr = YaraRule(
+                    name=name,
+                    content=base64.b64encode(content),
+                    rules=','.join(rules))
+
+            if len(name) <= 0:
+                success = False
+                errors.append("Rule name cannot be empty.")
+                
+            else:
+                existing_rule = dbsession.query(YaraRule).filter_by(name=name).first()
+                if existing_rule is not None:
+                    success = False
+                    errors.append("Rule name already exists.")
+
+            if len(content) <= 0:
+                success = False
+                errors.append("You must specify a file.")
+
+            if success:
+                dbsession.add(yr)
+                dbsession.commit()
+                return redirect(app.jinja_env.globals['url_for']('config'))
+            else:
+                return render_template('config-yara-add.html', errors='\n'.join(errors), name=name)
+    else:
+        return redirect(app.jinja_env.globals['url_for']('login'))
+        
+    
+@app.route('/config/yara/<int:yaraid>/delete', methods=['POST'])
+def yaraDelete(yaraid):
+    if 'logged_in' in session:
+
+        yi = dbsession.query(YaraRule).filter_by(id=yaraid).first()
+
+        if yi is None:
+            return redirect(app.jinja_env.globals['url_for']('config'))
+
+        dbsession.delete(yi)
+        dbsession.commit()
+
+        return redirect(app.jinja_env.globals['url_for']('config'))
+    else:
+        return redirect(app.jinja_env.globals['url_for']('login'))
+        
+        
     # SCAN PROGRESS
 
 @app.route('/progress', methods=['GET',])

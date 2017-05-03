@@ -32,6 +32,16 @@
                 </td>
             </tr>
             <tr>
+                <td>Yara rule List :</td>
+                <td>
+                    <select name="yara_list" multiple>
+                    {% for rule in yararules %}
+                        <option value="{{rule.id}}">{{rule.name}} [{{rule.date_added}}]</option>
+                    {% endfor %}
+                    </select>
+                </td>
+            </tr>
+            <tr>
                 <td></td>
                 <td>
                     <input type="submit" class="btn btn-primary" value="Add this profile" />

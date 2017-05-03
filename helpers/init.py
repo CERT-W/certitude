@@ -31,6 +31,7 @@ from config import BASE_DE_DONNEES_QUEUE
 from results_models import Result, IOCDetection
 from queue_models import Task
 from misc_models import User, GlobalConfig, XMLIOC, ConfigurationProfile, WindowsCredential
+from yara_models import YaraRule, YaraDetection
 from helpers import hashPassword, checksum
 import crypto
 import getpass
@@ -47,6 +48,8 @@ GlobalConfig.metadata.create_all(engine)
 XMLIOC.metadata.create_all(engine)
 ConfigurationProfile.metadata.create_all(engine)
 WindowsCredential.metadata.create_all(engine)
+YaraRule.metadata.create_all(engine)
+YaraDetection.metadata.create_all(engine)
 
 # Modules
 # for module in MODULES_CONSO:

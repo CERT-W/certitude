@@ -6,6 +6,8 @@ certs/
 *.cer
 *.key
 *.crt
+ioc/
+yara/
 
 # VirtualEnv
 bin/

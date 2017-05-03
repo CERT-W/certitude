@@ -10,3 +10,4 @@ dnspython
 pyasn1
 lxml
 pyopenssl
+ply
