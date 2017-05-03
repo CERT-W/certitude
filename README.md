@@ -9,6 +9,12 @@ CERTitude is a Python-based tool which aims at assessing the compromised perimet
 
 # Install guide
 
+## Submodules notice
+
+CERTitude now relies on submodules.
+- When initially cloning the repo, dont forget to do `git clone --recurese-submodules ...`.
+- If updating an already clone repo, do `git submodule init` then `git submodule update`
+
 ## Software Requirements
 
 - Python >= 2.7.9
