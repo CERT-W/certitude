@@ -203,12 +203,13 @@ def scan(targetObject, IOCObjects, hostConfidential):
                     else:
                         logginghashscan.info('Setting result=UNDEFINED for '+leaf.document)
                         res = hash_modules.FlatEvltResult.UNDEF
-                        resData = ''
+                        resData = None
 
                     # Store result for IOC if we ever need to evaluate it again
                     result[uid] = hash_modules.FlatEvltResult._str(res)
 
-                raw_results[leaf.id] = {'res':result[uid], 'iocid':IOCid, 'data': [e.decode(sys.stdout.encoding) for e in resData]}
+                data = None if resData is None else [e.decode(sys.stdout.encoding) for e in resData]
+                raw_results[leaf.id] = {'res':result[uid], 'iocid':IOCid, 'data': data}
 
             logginghashscan.info('Research for hashes in %s has ended' % IOCObject['name'])
 
