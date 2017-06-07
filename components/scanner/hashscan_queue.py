@@ -483,7 +483,12 @@ def demarrer_scanner(hWaitStop=None, batch=None):
 
                 # Let the scan begin
                 if cp.id in tree_by_cp.keys():
-                    resultats_scan = scan(targetObject, tree_by_cp[cp.id], cp.host_confidential)
+                    
+                    try:
+                        resultats_scan = scan(targetObject, tree_by_cp[cp.id], cp.host_confidential)
+                    except remotecmd.ShutdownException:
+                        loggingiocscan.warning('Shutdown exception: %s, %s, %s' % (repr(e), str(e.message), str(e)))
+            
                 else:
                     logginghashscan.warning('No IOC to scan (profile=%s)' % cp.name)
                     resultats_scan = {}

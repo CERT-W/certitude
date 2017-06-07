@@ -86,6 +86,12 @@ class RemComResponse(structure.Structure):
 class WritableShareException(Exception):
     pass
 
+class StartupException(Exception):
+    pass
+    
+class ShutdownException(Exception):
+    pass
+
 
 
 # Remote Command class
@@ -243,7 +249,7 @@ class RemoteCmd:
             self.__unsetup()
         except Exception, e:
             self.logger.critical('Cleanup error: '+str(e).replace('\n', ' - '))
-            raise Exception('Handler %s had to exit, remote cleanup might not be perfect...' % (self.__login + '@' + self.__ip))
+            raise ShutdownException('Handler %s had to exit, remote cleanup might not be perfect...' % (self.__login + '@' + self.__ip))
 
         if fromError:
             raise Exception('Handler %s had to be shutdown' % (self.__login + '@' + self.__ip))

@@ -484,7 +484,12 @@ def demarrer_scanner(hWaitStop=None, batch=None):
                 # Let the scan begin
 
                 if cp.id in tree_by_cp.keys():
-                    resultats_scan = scan(targetObject, tree_by_cp[cp.id], cp.host_confidential)
+                    
+                    try:
+                        resultats_scan = scan(targetObject, tree_by_cp[cp.id], cp.host_confidential)  
+                    except remotecmd.ShutdownException:
+                        loggingiocscan.warning('Shutdown exception: %s, %s, %s' % (repr(e), str(e.message), str(e)))
+            
                 else:
                     loggingiocscan.warning('No IOC to scan (profile=%s)' % cp.name)
                     resultats_scan = {}
@@ -509,8 +514,11 @@ def demarrer_scanner(hWaitStop=None, batch=None):
             loggingiocscan.debug('(IOC scanner sleeping for ' + str(SLEEP) + ' seconds...)' \
                 + (' (' + str(taille_queue) + ' waiting)' if taille_queue > 0 else ''))
             time.sleep(SLEEP)
+            
         except KeyboardInterrupt:
             halt = True
+            
+        
         except Exception, e:
         
             exc_type, exc_obj, exc_tb = sys.exc_info()

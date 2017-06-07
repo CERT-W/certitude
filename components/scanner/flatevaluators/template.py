@@ -179,8 +179,8 @@ class EvaluatorInterface:
         # > selecting count by default, otherwise selecting the user defined element
         # SELECT COUNT *  FROM <table> WHERE <index> LIKE <value> (default example)
         # SELECT FilePath FROM <table> WHERE <index> LIKE <value> (user defined example)
-        querySelect = 'COUNT(*)' if not select else select
-        queryStart = 'SELECT `%s` FROM %s WHERE ' % (querySelect, self.__tableName)
+        querySelect = 'COUNT(*)' if not select else ('`%s`' % select)
+        queryStart = 'SELECT %s FROM %s WHERE ' % (querySelect, self.__tableName)
         queryVariable = '`%(index)s` %(clause)s' % {'index' : category, 'clause': (condition)}
         queryEnd = ';' if not select else ' UNION SELECT CHAR(1);'
         query = queryStart + queryVariable + queryEnd
