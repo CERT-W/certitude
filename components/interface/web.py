@@ -335,6 +335,7 @@ def config():
         for yararule in yararules:
             yararef[str(yararule.id)] = yararule.name + ' - ' + str(yararule.date_added)
 
+            
         iocdesclist = {}
         for cp in configuration_profiles:
             if len(cp.ioc_list)==0:
@@ -344,7 +345,7 @@ def config():
 
         yaradesclist = {}
         for cp in configuration_profiles:
-            if len(cp.ioc_list)==0:
+            if len(cp.yara_list)==0:
                 yaradesclist[cp.id] = ''
                 continue
             yaradesclist[cp.id] = '||'.join([yararef[str(id)] for id in cp.yara_list.split(',')])
@@ -986,6 +987,14 @@ def api_json():
             if not priority_hash > 0:
                 priority_hash = 10
 
+            # Priority Yara
+            try:
+                priority_yara = int(param.get('priority_yara'))
+            except:
+                priority_yara = 10
+            if not priority_yara > 0:
+                priority_yara = 10
+
             # Retries count (IOC)
             essais_ioc = param.get('retries_ioc')
             if essais_ioc is not None:
@@ -1007,6 +1016,17 @@ def api_json():
                     retries_left_hash = 10
             else:
                 retries_left_hash = 10
+
+            # Retries count (yara)
+            essais_yara = param.get('retries_yara')
+            if essais_yara is not None:
+                try:
+                    assert 0 < int(essais_yara) <= 10
+                    retries_left_yara = int(essais_yara)
+                except:
+                    retries_left_yara = 10
+            else:
+                retries_left_yara = 10
 
             subnet = 'n/a'
             subnetp = param.get('subnet', None)
@@ -1064,13 +1084,17 @@ def api_json():
                             ip = str(ipa),
                             priority_ioc  =  priority_ioc,
                             priority_hash = priority_hash,
+                            priority_yara = priority_yara,
                             reserved_ioc = False,
                             reserved_hash = False,
+                            reserved_yara = False,
                             iocscanned = False,
                             hashscanned = False,
+                            yarascanned = False,
                             ip_demandeur = request.remote_addr,
                             retries_left_ioc = retries_left_ioc,
                             retries_left_hash = retries_left_hash,
+                            retries_left_yara = retries_left_yara,
                             commentaire = ipSubnet,
                             batch_id = batch
                         )
@@ -1178,21 +1202,19 @@ def progress():
         headers = (
             'id',
             'ip',
-            'ip_demandeur',
             'commentaire',
             'batch_id',
             'date_soumis',
             'date_debut',
             'iocscanned',
             'hashscanned',
-            'priority_ioc',
-            'priority_hash',
+            'yarascanned',
             'reserved_ioc',
             'reserved_hash',
+            'reserved_yara',
             'retries_left_ioc',
             'retries_left_hash',
-            'last_retry_ioc',
-            'last_retry_hash',
+            'retries_left_yara',
         )
         tasks = dbsession.query(Task).order_by(Task.id.desc()).limit(50)
         tasks_data = [[getattr(t, h) for h in headers] for t in tasks]

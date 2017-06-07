@@ -49,6 +49,10 @@
                         <td><input name="priority_hash" type="number" placeholder="Min=1 Max=99" value=10 /></td>
                     </tr>
                     <tr>
+                        <td>Yara Scan Priority:</td>
+                        <td><input name="priority_yara" type="number" placeholder="Min=1 Max=99" value=10 /></td>
+                    </tr>
+                    <tr>
                         <td rowspan=2>Max number of retries (IOC):</td>
                     </tr>
                     <tr>
@@ -60,7 +64,13 @@
                     <tr>
                         <td><input type="number" name="retries_hash" placeholder="Hash scan max tries" value=10 /></td>
                     </tr>
-                     <tr>
+                    <tr>
+                        <td rowspan=2>Max number of retries (Yara):</td>
+                    </tr>
+                    <tr>
+                        <td><input type="number" name="retries_yara" placeholder="Hash scan max tries" value=10 /></td>
+                    </tr>
+                    <tr>
                         <td>Force scan:</td>
                         <td><input type="checkbox" name="force" id="scan_force" value="0" /></td>
                     </tr>

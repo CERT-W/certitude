@@ -45,14 +45,19 @@ class Task(Base):
     # From here, in english
     iocscanned = Column(Boolean, default=False)
     hashscanned = Column(Boolean, default=False)
+    yarascanned = Column(Boolean, default=False)
     priority_ioc = Column(Integer)
     priority_hash = Column(Integer)
+    priority_yara = Column(Integer)
     reserved_ioc = Column(Boolean, default=False)
     reserved_hash = Column(Boolean, default=False)
+    reserved_yara = Column(Boolean, default=False)
     retries_left_ioc = Column(Integer, default=0)
     retries_left_hash = Column(Integer, default=0)
+    retries_left_yara = Column(Integer, default=0)
     last_retry_ioc = Column(DateTime)
     last_retry_hash = Column(DateTime)
+    last_retry_yara = Column(DateTime)
 
     # Runtime configuration
     batch_id = Column(Integer)
