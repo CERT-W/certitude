@@ -27,63 +27,44 @@ if __name__ == "__main__" and __package__ is None:
     raise Exception('Erreur : lancez le script depuis main.py et non directement')
 
 
-# From CERTitude orchestrator
+# SYS MODULES
 import base64
-import subprocess
-import socket
-import time
 import datetime
+import getpass
+import json
 import logging
+from lxml import objectify
+from optparse import OptionParser
+import os
 import re
-import uuid
-from os import path
-try:
-    import win32event
-except:
-    pass
-
-threadname = uuid.uuid4().hex[:6]
-
+import subprocess
 from sqlalchemy import create_engine, or_, func
 from sqlalchemy.orm import sessionmaker
-from lxml import objectify
+import sys
+import socket
+import time
+from threading import Lock
+import uuid
 
+# USER MODULES
 from config import DOSSIER_LOG, BASE_DE_DONNEES_QUEUE, SLEEP, SECONDES_ENTRE_TENTATIVES
 from config import IOC_MODE, IOC_KEEPFILES
 from config import IOC_CONFIDENTIAL_DIRECTORY, IOC_COMPONENT_ROOT, IOC_TEMP_DIR
+import helpers.crypto as crypto
+from helpers.helpers import hashPassword, checksum
+import helpers.iocscan_modules as ioc_modules
+from helpers.misc_models import ConfigurationProfile, WindowsCredential, XMLIOC, Batch, GlobalConfig, User
 from helpers.queue_models import Task
 from helpers.results_models import Result, IOCDetection
-from helpers.misc_models import ConfigurationProfile, WindowsCredential, XMLIOC, Batch, GlobalConfig, User
-from helpers.helpers import hashPassword, checksum
-import helpers.crypto as crypto
-import getpass
-import json
+import openioc.openiocparser as openiocparser
+import openioc.ioc as ioc
+import remotecmd
 
-try:
-    chemin = path.join(path.dirname(path.abspath(__file__)), '..', '..')
-except:
-    chemin = ""
-
+threadname = uuid.uuid4().hex[:6]
 loggingiocscan = logging.getLogger('iocscanner.' + threadname)
 
 engine = create_engine(BASE_DE_DONNEES_QUEUE, echo=False)
 session = sessionmaker(bind=engine)()
-
-# From certitude.py
-
-import openioc.openiocparser as openiocparser
-import openioc.ioc as ioc
-
-import remotecmd
-from threading import Lock
-from optparse import OptionParser
-import  time, logging, os, sys, json
-
-# from targethandler.py
-
-# Evaluators
-
-import helpers.iocscan_modules as ioc_modules
 
 DR_PLUS_DIR = 'DR_PLUS'
 
@@ -499,11 +480,6 @@ def demarrer_scanner(hWaitStop=None, batch=None):
                 # Update queue size
                 taille_a_scanner = a_scanner.count()
 
-                try:
-                    # If launched as a service (probably removed soon, TODO)
-                    halt = (win32event.WaitForSingleObject(hWaitStop, 2000) == win32event.WAIT_OBJECT_0)
-                except:
-                    pass
                 if halt:
                     # Stop signal encountered
                     break
