@@ -127,6 +127,19 @@ def requires_auth(f):
 
     return decorated
 
+# ''' Bokeh configuration '''
+
+bokeh_process = None
+
+# Preventing Flask from running Bokeh twice
+# source : https://stackoverflow.com/questions/9449101/how-to-stop-flask-from-initialising-twice-in-debug-mode
+if not DEBUG or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+    bokeh_process = subprocess.Popen(['bokeh', 'serve', 'crossbokeh.py'], stdout=subprocess.PIPE)
+
+@atexit.register
+def kill_server():
+    if bokeh_process is not None:
+        bokeh_process.kill()
 
 # ''' CSRF Protection '''
 
@@ -572,16 +585,6 @@ def campaignvisualizationbatch(batchid):
         return render_template('campaign-visualizations-batch.html', batch=batch)
 
 
-bokeh_process = subprocess.Popen(
-    ['bokeh', 'serve', 'crossbokeh.py'],
-    stdout=subprocess.PIPE)
-
-
-@atexit.register
-def kill_server():
-    bokeh_process.kill()
-
-
 @app.route('/massvisualizations/<int:batchid>')
 @requires_auth
 def massvisualizationbatch(batchid):
@@ -790,7 +793,7 @@ def resultscsv(batchid):
         ioc_detections = dbsession.query(IOCDetection).filter_by(result_id=result.id).all()
 
         response += '%d,%s,%s,%s,%s,%s' % (
-        result.id, task.ip, result.smbreachable, task.iocscanned, task.hashscanned, task.commentaire)
+            result.id, task.ip, result.smbreachable, task.iocscanned, task.hashscanned, task.commentaire)
         result_for_host = {e: 0 for e in ioc_list}
 
         # Sum IOC detections
@@ -1069,7 +1072,7 @@ def api_json():
                     reponse['ips'][str(ip)] = 'added to queue'
 
                 reponse['ips'][str(ip)] += ' (%d tries for iocscan, %d tries for hashscan)' % (
-                retries_left_ioc, retries_left_hash)
+                    retries_left_ioc, retries_left_hash)
 
             except netaddr.core.AddrFormatError:
                 reponse['ips'][str(ip)] = ' not added to batch ' + batch + ': bad formatting)'
