@@ -127,6 +127,20 @@ def requires_auth(f):
 
     return decorated
 
+# ''' Bokeh configuration '''
+
+bokeh_process = None
+
+# Preventing Flask from running Bokeh twice
+# source : https://stackoverflow.com/questions/9449101/how-to-stop-flask-from-initialising-twice-in-debug-mode
+if not DEBUG or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+    bokeh_process = subprocess.Popen(['bokeh', 'serve', 'crossbokeh.py'], stdout=subprocess.PIPE)
+
+@atexit.register
+def kill_server():
+    if bokeh_process is not None:
+        bokeh_process.kill()
+
 
 # ''' CSRF Protection '''
 
@@ -570,17 +584,6 @@ def campaignvisualizationbatch(batchid):
         return redirect(app.jinja_env.globals['url_for']('campaignvisualizations'))
     else:
         return render_template('campaign-visualizations-batch.html', batch=batch)
-
-
-bokeh_process = subprocess.Popen(
-    ['bokeh', 'serve', 'crossbokeh.py'],
-    stdout=subprocess.PIPE)
-
-
-@atexit.register
-def kill_server():
-    bokeh_process.kill()
-
 
 @app.route('/massvisualizations/<int:batchid>')
 @requires_auth
