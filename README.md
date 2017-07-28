@@ -1,58 +1,74 @@
 CERTitude - The seeker of IOC
 =============
-
-# Main purpose
+![CERTitude logo](https://s3.postimg.org/a9wtwdftv/test-logo-certitude-white-bg-75p.png)
+# Description
 
 CERTitude is a Python-based tool which aims at assessing the compromised perimeter during incident response assignments.
+It allows analysts to perform large scale scans of Windows-based information systems by searching for behavioural patterns described in IOC (Indicator Of Compromise) files.
 
-
+Notable features:
+* Ability to scan hosts in a way that prevents the target workstation from knowing what the investigator is searching for
+* Ability to retrieve some pieces of data from the hosts
+* Multiple scanner instances (for IOCs and/or hash scans) can be run at the same time for parallel scanning
+* Built with security considerations in mind (protected database, secure communications with hosts using IPSec)
 
 # Install guide
 
 ## Submodules notice
 
-CERTitude now relies on submodules.
-- When initially cloning the repo, dont forget to do `git clone --recurse-submodules [url]`.
-- If updating an already cloned repo, do `git submodule init` then `git submodule update`
+CERTitude now relies on submodules. If updating an already cloned repo, do `git submodule init` and then `git submodule update`.
 
-## Software Requirements
+## Requirements
 
-- Python >= 2.7.9
-- OpenSSL if you want to use SSL
+- Python (>= 2.7.9)
+- OpenSSL (if you want to use SSL)
 
 
-## Installing Python requirements
-
-### Virtualenv
-
-CERTitude is compatible with virtualenv.
-Install it with `pip install virtualenv`.
-In the root directory, type:
-
+## Setup
+### Clone properly
 ```
-virtualenv .
-. ./bin/activate
+git clone --recurse-submodules https://github.com/CERT-W/certitude.git
+cd certitude
 ```
 
+### Virtualenv (optional)
+CERTitude is best used with the *virtualenv* development scheme:
+- Install virtualenv with `pip install virtualenv`
+- In the root directory, type `virtualenv .`
+- Activate the virtualenv
+  - On Windows: `.\Scripts\activate`
+  - On Linux: `. ./bin/activate`
 
-### Commands
-
-```batch
-cd dist
-cd plyara
-python setup.py build
-python setyp.py install
+### Install dependencies
+* Install *plyara*
+```
+cd dist/plyara
+python setup.py build && python setup.py install
 cd ..
+```
+* Upgrade *pip*
+```
 pip install --upgrade pip
-pip install lxml-3.6.0-cp27-none-win32.whl	# Under ...
-.\pycrypto-2.6.1.win32-py2.7.exe			# ... Windows
+```
+* **Windows only**: manually install *lxml* & *pycrypto*
+```
+pip install lxml-3.6.0-cp27-none-win32.whl
+easy_install pycrypto-2.6.1.win32-py2.7.exe
+```
+* Install the other requirements
+```
 pip install -r requirements.txt
 ```
+* Initialize the database
+```
+python main.py init
+```
 
+## Configuration
+### Generate SSL certificate & private key (optional)
 
-## Generating SSL certificate & private key
-
-**Note:** this steps requires openssl to be installed and in your `$PATH`
+**Note:** this steps requires OpenSSL to be installed and in your `$PATH`. 
+You may also have to run *gen-cert-for-me.bat* in an administrator prompt.
 
 ```batch
 cd ssl
@@ -60,41 +76,64 @@ gen-cert-for-me.bat
 ```
 
 
-## Tweaking your config file
+### Tweak your config file
 
-Edit `config.py`
-
+Edit `config.py` in the root directory:
 - Enable HTTPS:
     - `USE_SSL=True`
     - `SSL_KEY_FILE = 'path/to/key'`
     - `SSL_CERT_FILE = 'path/to/cer'`
-
-- Database location: `BASE_DE_DONNEES_QUEUE = 'path/to/db'`
+- Update the database location: `BASE_DE_DONNEES_QUEUE = 'path/to/db'`
 - Set the server SALT for password hashing (based on sha256)
 
 
 # Run guide
 
-## Initializing the database
+To use CERTitude and search for IOC efficiently, you need to use these different modules:
 
-`python main.py init`
+## Interface
+This module creates a web-interface on <http://127.0.0.1:5000/> that allows you to visualize results and configure:
+- IOCs
+- Scan profiles (host-confidential scans, IOC list)
+- Add Windows credentials
+- Add scan batches and specify their targets
 
+It can be launched using: `python main.py run -c interface`. Shortcuts are available for Windows (`.\interface.bat`) and Linux (`./interface.sh`).
 
-## Runnning things
+**Note**: This module **only** configures CERTitude, but doesn't launch the scans itself.
 
-- Interface : `python main.py run -c interface`
-- Scanner : `python main.py run -c iocscan [-b batch]`
+## Scanners
+After configuring scan batches through the interface, you will need to launch scanners to actually scan the target machines.
 
+If your IOCs do not contain any hash elements, running the *IOC scanner* will be enough.
+
+Otherwise, you will also need to run the *Hash scanner*.
+
+**Why?** IOC scans perform much faster than hash scans, so running these in different processes allows you to perform faster scans overall. 
+
+These scanners can be launched using:
+- IOC scanner: `python main.py run -c iocscan` (shortcuts: `.\iocscan.bat` & `./iocscan.sh`)
+- Hash scanner:`python main.py run -c hashscan` (shortcuts: `.\hashscan.bat` & `./hashscan.sh`)
+
+**Tip**: If you want to scan different targets at the same time, you can run multiple scanner instances.
 
 # Misc
+## Common errors
+#### \[dropFile] File components\scanner/resources/RemComSvc.exe was not found
+That error tends to happen when your antivirus software flags RemComSvc.exe as dangerous and deletes it.
+The binary has since been recompiled and should not trigger any errors anymore, but if so please contact us!
+
+#### \[__setup]  (No writable share found among \[ADMIN$, C$])
+The account you added through the interface does not seem to have administrator rights on the target machine.
+Please make sure these rights have been setup properly.
 
 ## Contact
 
 cert@wavestone.com
-&copy; Wavestone 2016
+&copy; Wavestone 2017
 
 
-## Available modules
+## Available scan modules
 
 ```
 *** IOCSCAN ***
