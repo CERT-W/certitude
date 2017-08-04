@@ -23,9 +23,11 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 '''
 
-import result as evltResult
 import logging
-import sys, os
+import os
+import sys
+from helpers.helpers import threadname
+import result as evltResult
 
 PCREplace = [
                 ["\"", "\\\""],
@@ -145,7 +147,11 @@ class EvaluatorInterface:
     #
     #    Eval the atomic IOC presence
     #
-    def eval(self, valueFile):
+    def eval(self, valueFile, iocList = None):
+        if iocList is not None:
+            return self.eval_list(valueFile, iocList)
+        if self.getIOC() is None:
+            return AttributeError
 
         if self.__bypass:
             return evltResult.UNDEF
@@ -228,6 +234,88 @@ class EvaluatorInterface:
 
         return (ret, resData)
 
+    #######
+    #
+    #    Eval an IOC list from the same category
+    #
+    def eval_list(self, value_file, ioc_list):
+
+        if self.__bypass:
+            return evltResult.UNDEF
+
+        # private attribute for child class
+        rc = self.getRemoteCommand()
+        wd = self.getWD()
+
+        result = {}
+
+        ioc_list = self.filter_ioc_list(ioc_list)
+        file_name, file_content = self.file_from_ioc_list(ioc_list)
+        self.log('Loading file %s' % file_name, logging.DEBUG)
+
+        with open(value_file, 'w') as f:
+            f.write(file_content)
+
+        if self.__confidential:
+            raise NotImplementedError
+            # Local SQLITE3 instance
+            # TODO: do it
+            # sqlite3loc = os.path.join(LOCAL_ANALYSIS_DIR, 'sqlite3.exe')
+            # dbloc = os.path.join(self.dirname, self.__dbName)
+            # localcommand = 'type "%s" | "%s" "%s"' % (value_file, sqlite3loc, dbloc)
+            # res = os.popen(localcommand).read().replace('\r', '').replace('\n', '')
+        else:
+            rc.dropFile(value_file, file_name, True, False)
+            file_identifier = '%s.%s' % (threadname, ioc_list[0].document.lower())
+
+            results_filename = '%s.tar.gz' % (file_identifier)
+
+            self.log('Running the sql file %s' % file_name, logging.DEBUG)
+            rc.execCommand('type %s | sqlite3 %s' % (file_name, self.__dbName), wd)
+
+            self.log('Compressing results from %s' % file_identifier, logging.DEBUG)
+            rc.execCommand('getresults.bat %s' % (file_identifier), wd)
+
+            self.log('Downloading results from %s' % results_filename, logging.DEBUG)
+            rc.getFile(results_filename, results_filename)
+
+            rc.deleteFile(results_filename)
+
+            # TODO: check that this next line is *really* crossplatform
+            # or use TarFile https://docs.python.org/2/library/tarfile.html
+            self.log('Extracting results from %s' % file_identifier, logging.DEBUG)
+            localcommand = 'gzip -d %(id)s.tar.gz && tar xvf %(id)s.tar' % {'id': file_identifier}
+
+            result_files = os.popen(localcommand).read().replace('\r', '').split('\n')
+            self.log('Found %s' % result_files, logging.DEBUG)
+
+            for tmp_res_file in result_files:
+                if tmp_res_file == '':
+                    continue
+
+                # File format is [threadname].[category].[ioc_id].[db_ioc_id].res
+                tmp_id = tmp_res_file.split('.')[2]
+                tmp_db_ioc_id = tmp_res_file.split('.')[3]
+
+                tmp_data = ''
+                with open(tmp_res_file, 'r') as f:
+                    tmp_data = f.read()
+
+                ret = evltResult.TRUE
+                res_data = None
+
+                if tmp_data == '':
+                    ret = evltResult.UNDEF
+                elif tmp_data == '0' or tmp_data == '\x01\n':
+                    ret = evltResult.FALSE
+                elif tmp_data[:1] == '\x01':
+                    res_data = [e.decode(sys.stdout.encoding) for e in tmp_data.splitlines()[1:]]
+
+                result[tmp_id] = {'res':ret, 'iocid':tmp_db_ioc_id, 'data': res_data}
+
+        return result
+
+
     # Escapes the value
     def escapeValue(self, value):
 
@@ -249,3 +337,59 @@ class EvaluatorInterface:
         if level>=logging.CRITICAL:
             sys.exit(1)
 
+
+    def filter_ioc_list(self, ioc_list):
+        return [ioc for ioc in ioc_list if \
+                (ioc.search.lower() in self.__evalList) and \
+                (ioc.condition in conditionList.keys())]
+
+    def file_from_ioc_list(self, ioc_list):
+        """
+        Generate file names and their contents from an IOC dictionary
+        :return: a dictionary with file names as keys and file contents as values
+        """
+        result_name = '%s.%s.sql' % (threadname, ioc_list[0].document.lower())
+        result_file = 'SELECT load_extension("pcre.so");\n'
+
+        for ioc in ioc_list:
+            # loggingiocscan.debug('IOC parsing: checking IOC "%s"' % (ioc_id))
+            result_file += self.query_from_ioc(ioc)
+
+        return result_name, result_file
+
+    def query_from_ioc(self, ioc):
+        select = ioc.select.replace('%s/' % ioc.document, '')
+
+        # Hey, I don't know how to search for that
+        if (ioc.search.lower() not in self.__evalList) \
+                or (ioc.condition not in conditionList.keys()):
+            print '%s/%s is not in evaluation list' % (ioc.search, ioc.condition)
+            return ''
+
+        if select and select.lower() not in self.__evalList:
+            print 'Could not select %s (not in evaluation list)' % (ioc.select)
+            select = ''
+
+        category = ioc.search.replace('%s/' % ioc.document, '')
+        conditionTerm = conditionList[ioc.condition]
+
+        # Escape '\' not using REGEX
+        condition = conditionTerm % self.escapeValue(
+            ioc.value) if ioc.condition != 'regex' else conditionTerm % ioc.value
+
+        # Craft query
+        # > selecting count by default, otherwise selecting the user defined element
+        # SELECT COUNT *  FROM <table> WHERE <index> LIKE <value> (default example)
+        # SELECT FilePath FROM <table> WHERE <index> LIKE <value> (user defined select)
+        querySelect = 'COUNT(*)' if not select else ('`%s`' % select)
+        queryStart = 'SELECT %s FROM %s WHERE ' % (querySelect, self.__tableName)
+        queryVariable = '`%(index)s` %(clause)s' % {'index': category, 'clause': (condition)}
+        queryEnd = ';' if not select else ' UNION SELECT CHAR(1);'
+        query = queryStart + queryVariable + queryEnd
+
+        filename = '%s.%s.%s.%s.res' % (threadname, ioc.document.lower(), ioc.id, ioc.db_ioc_id)
+        output = '.output "%s"' % (filename)
+
+        res = output + '\n' + query + '\n'
+
+        return res
