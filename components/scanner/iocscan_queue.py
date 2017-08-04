@@ -189,6 +189,7 @@ def scan(targetObject, IOCObjects, hostConfidential):
 
             category_result = evlt.eval(TEMP_FILE, ioc_list)
 
+            # TODO: check that results are well passed to raw_results there
             raw_results.update(category_result)
 
             loggingiocscan.info('Research for %s has ended' % category)

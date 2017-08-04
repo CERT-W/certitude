@@ -26,6 +26,8 @@
 import logging
 import os
 import sys
+import tarfile
+
 from helpers.helpers import threadname
 import result as evltResult
 
@@ -43,7 +45,7 @@ conditionList = {
 
 # logger
 
-LOCAL_ANALYSIS_DIR = 'components\\iocscan\\resources\\localanalysis'
+LOCAL_ANALYSIS_DIR = 'components\\scanner\\resources\\localanalysis'
 FORMAT = logging.Formatter('%(asctime)-15s\t%(name)s\t%(levelname)s\t%(message)s')
 sh = logging.StreamHandler()
 sh.setFormatter(FORMAT)
@@ -270,48 +272,46 @@ class EvaluatorInterface:
 
             results_filename = '%s.tar.gz' % (file_identifier)
 
-            self.log('Running the sql file %s' % file_name, logging.DEBUG)
+            # self.log('Running the sql file %s' % file_name, logging.DEBUG)
             rc.execCommand('type %s | sqlite3 %s' % (file_name, self.__dbName), wd)
 
-            self.log('Compressing results from %s' % file_identifier, logging.DEBUG)
+            # self.log('Compressing results from %s' % file_identifier, logging.DEBUG)
             rc.execCommand('getresults.bat %s' % (file_identifier), wd)
 
-            self.log('Downloading results from %s' % results_filename, logging.DEBUG)
-            rc.getFile(results_filename, results_filename)
+            # self.log('Downloading results from %s' % results_filename, logging.DEBUG)
+            # TODO: find a clean way to get the localanalysis directory
+            extract_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'resources\\localanalysis\\')
+            rc.getFile(results_filename, os.path.join(extract_dir, results_filename))
 
             rc.deleteFile(results_filename)
 
-            # TODO: check that this next line is *really* crossplatform
-            # or use TarFile https://docs.python.org/2/library/tarfile.html
-            self.log('Extracting results from %s' % file_identifier, logging.DEBUG)
-            localcommand = 'gzip -d %(id)s.tar.gz && tar xvf %(id)s.tar' % {'id': file_identifier}
+            self.log('Extracting results from %s' % os.path.join(extract_dir, results_filename), logging.DEBUG)
+            tar = tarfile.open(os.path.join(extract_dir, results_filename), 'r:gz')
+            # 'r|gz' might be used for better perf & stream-mode reading ?
 
-            result_files = os.popen(localcommand).read().replace('\r', '').split('\n')
-            self.log('Found %s' % result_files, logging.DEBUG)
+            self.log('Found %s' % tar.getnames(), logging.DEBUG)
 
-            for tmp_res_file in result_files:
-                if tmp_res_file == '':
-                    continue
+            for member in tar.getmembers():
+                f = tar.extractfile(member)
 
-                # File format is [threadname].[category].[ioc_id].[db_ioc_id].res
-                tmp_id = tmp_res_file.split('.')[2]
-                tmp_db_ioc_id = tmp_res_file.split('.')[3]
-
-                tmp_data = ''
-                with open(tmp_res_file, 'r') as f:
-                    tmp_data = f.read()
+                tmp_data = f.read()
+                tmp_id = member.name.split('.')[2]
+                tmp_db_ioc_id = member.name.split('.')[3]
 
                 ret = evltResult.TRUE
                 res_data = None
 
                 if tmp_data == '':
                     ret = evltResult.UNDEF
-                elif tmp_data == '0' or tmp_data == '\x01\n':
+                elif tmp_data == '0\n' or tmp_data == '\x01\n':
                     ret = evltResult.FALSE
                 elif tmp_data[:1] == '\x01':
                     res_data = [e.decode(sys.stdout.encoding) for e in tmp_data.splitlines()[1:]]
 
                 result[tmp_id] = {'res':ret, 'iocid':tmp_db_ioc_id, 'data': res_data}
+                print ret, res_data
+
+            tar.close()
 
         return result
 
