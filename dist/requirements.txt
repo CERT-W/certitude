@@ -11,4 +11,3 @@ pyasn1
 lxml
 pyopenssl
 ply
-tarfile
