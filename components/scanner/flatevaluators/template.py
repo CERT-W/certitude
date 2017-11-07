@@ -234,7 +234,7 @@ class EvaluatorInterface:
 
         resData = res.splitlines()[1:] if select else None
 
-        return (ret, resData)
+        return (evltResult._str(ret), resData)
 
     #######
     #
@@ -308,8 +308,7 @@ class EvaluatorInterface:
                 elif tmp_data[:1] == '\x01':
                     res_data = [e.decode(sys.stdout.encoding) for e in tmp_data.splitlines()[1:]]
 
-                result[tmp_id] = {'res':ret, 'iocid':tmp_db_ioc_id, 'data': res_data}
-                print ret, res_data
+                result[tmp_id] = {'res': evltResult._str(ret), 'iocid':tmp_db_ioc_id, 'data': res_data}
 
             tar.close()
 

@@ -59,6 +59,7 @@ from helpers.results_models import Result, IOCDetection
 import openioc.openiocparser as openiocparser
 import openioc.ioc as ioc
 import remotecmd
+import utils
 
 loggingiocscan = logging.getLogger('iocscanner.' + threadname)
 
@@ -95,10 +96,10 @@ EndCommandList = [
     ['rmtar.bat import_sql.tar',0],
 ]
 
-def ioc_dict_from_tree(ioc_tree):
+def ioc_dict_from_trees(ioc_trees):
     ioc_dictionary = {}
 
-    for ioc_id, ioc_object in ioc_tree.items():
+    for ioc_id, ioc_object in ioc_trees.items():
         leaves = ioc_object['tree'].getLeaves()
 
         # IOC Tree evaluation
@@ -106,14 +107,11 @@ def ioc_dict_from_tree(ioc_tree):
             # Do we know how to search for that ?
             if ioc.document in ioc_modules.flatEvaluatorList.keys():
                 # Getting the dictionary for that category, or creating it
-                try:
-                    ioc_category = ioc_dictionary[ioc.document]
-                except KeyError:
-                    ioc_category = ioc_dictionary[ioc.document] = []
+                if not ioc.document in ioc_dictionary.keys():
+                    ioc_dictionary[ioc.document] = []
 
                 ioc.db_ioc_id = ioc_id
-
-                ioc_category.append(ioc)
+                ioc_dictionary[ioc.document].append(ioc)
 
     return ioc_dictionary
 
@@ -173,7 +171,7 @@ def scan(targetObject, IOCObjects, hostConfidential):
 
     if IOC_MODE == 'flat':
 
-        ioc_dict = ioc_dict_from_tree(IOCObjects)
+        ioc_dict = ioc_dict_from_trees(IOCObjects)
 
         for category, ioc_list in ioc_dict.items():
             evlt = ioc_modules.flatEvaluatorList[category](loggingiocscan, None, RemCom, drive, IOC_KEEPFILES,
@@ -188,8 +186,6 @@ def scan(targetObject, IOCObjects, hostConfidential):
                     RemCom.getFile(newFile, os.path.join(hostConfidential_LOCALNAME, newFile))
 
             category_result = evlt.eval(TEMP_FILE, ioc_list)
-
-            # TODO: check that results are well passed to raw_results there
             raw_results.update(category_result)
 
             loggingiocscan.info('Research for %s has ended' % category)
@@ -501,6 +497,7 @@ def demarrer_scanner(hWaitStop=None, batch=None):
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             loggingiocscan.error('Exception caught : %s, %s, %s [function %s, line %d]' % (repr(e), str(e.message), str(e), fname, exc_tb.tb_lineno))
+            raise e
 
             # Cancel changes and unreserve task
             session.rollback()

@@ -23,7 +23,7 @@ class Pipes(Thread):
         try:
             lock.acquire()
             global dialect
-            self.server = SMBConnection('*SMBSERVER', self.remoteHost, sess_port = self.port, preferredDialect = SMB_DIALECT)
+            self.server = SMBConnection('*SMBSERVER', self.remoteHost, sess_port = self.port, preferredDialect = SMB2_DIALECT_21)
             user, passwd, domain, lm, nt = self.credentials[:5]
             self.server.login(user, passwd, domain, lm, nt)
             lock.release()
