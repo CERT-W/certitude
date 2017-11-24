@@ -2,12 +2,14 @@ output_*.xml
 *.pyc
 _log/*.log
 *.db
-certs/
 *.cer
 *.key
 *.crt
+*.ioc
+*.ioc-select
 ioc/
 yara/
+certs/
 
 # VirtualEnv
 bin/

@@ -630,7 +630,13 @@ class RemoteCmd:
                     offset += l
 
         except smbconnection.SessionError, e:
-            self.__log__(LEVEL_CRITICAL, 'Cannot read '+filename+': ',e)
+            # Special case for the EOF:
+            # STATUS_END_OF_FILE error code = 0xC0000011 = 3221225489
+            if (e.getErrorCode() == 3221225489):
+                self.__closeFile(fid)
+                return ret
+
+            self.__log__(LEVEL_CRITICAL, 'Cannot read '+filename+': ', e)
             self.__exit(True)
 
 

@@ -25,10 +25,11 @@
 
 
 import logging
+import uuid
 from hashlib import sha256, sha512
 from config import INTERFACE_HASH_SALT
 
-
+threadname = uuid.uuid4().hex[:6]
 loggingserver = logging.getLogger('api')
 
 def hashPassword(password):

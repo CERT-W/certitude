@@ -98,7 +98,7 @@ This module creates a web-interface on <http://127.0.0.1:5000/> that allows you 
 - Add Windows credentials
 - Add scan batches and specify their targets
 
-It can be launched using: `python main.py run -c interface`. Shortcuts are available for Windows (`.\interface.bat`) and Linux (`./interface.sh`).
+It can be launched using: `python main.py run -c interface`.
 
 **Note**: This module **only** configures CERTitude, but doesn't launch the scans itself.
 
@@ -112,8 +112,8 @@ Otherwise, you will also need to run the *Hash scanner*.
 **Why?** IOC scans perform much faster than hash scans, so running these in different processes allows you to perform faster scans overall. 
 
 These scanners can be launched using:
-- IOC scanner: `python main.py run -c iocscan` (shortcuts: `.\iocscan.bat` & `./iocscan.sh`)
-- Hash scanner:`python main.py run -c hashscan` (shortcuts: `.\hashscan.bat` & `./hashscan.sh`)
+- IOC scanner: `python main.py run -c iocscan` 
+- Hash scanner:`python main.py run -c hashscan` 
 
 **Tip**: If you want to scan different targets at the same time, you can run multiple scanner instances.
 

@@ -693,7 +693,13 @@ def hostjson(hostid):
     # list of GUID per IOC
     guids = {i: {} for i in ioc_list}
     for iocd in ioc_detections:
-        ioc_data = [str(escape(d)) for d in json.loads(iocd.indicator_data)]
+        jdata = json.loads(iocd.indicator_data)
+
+        if jdata is not None:
+            ioc_data = [str(escape(d)) for d in jdata]
+        else:
+            ioc_data = []
+            
         guids[iocd.xmlioc_id][iocd.indicator_id] = ioc_data
         # guids[iocd.xmlioc_id][iocd.indicator_id] = str(escape(iocd.indicator_data))
 

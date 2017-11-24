@@ -44,6 +44,7 @@ import sys
 import socket
 import time
 from threading import Lock
+import traceback
 import uuid
 
 # USER MODULES
@@ -51,7 +52,7 @@ from config import DOSSIER_LOG, BASE_DE_DONNEES_QUEUE, SLEEP, SECONDES_ENTRE_TEN
 from config import IOC_MODE, IOC_KEEPFILES
 from config import IOC_CONFIDENTIAL_DIRECTORY, IOC_COMPONENT_ROOT, IOC_TEMP_DIR
 import helpers.crypto as crypto
-from helpers.helpers import hashPassword, checksum
+from helpers.helpers import hashPassword, checksum, threadname
 import helpers.iocscan_modules as ioc_modules
 from helpers.misc_models import ConfigurationProfile, WindowsCredential, XMLIOC, Batch, GlobalConfig, User
 from helpers.queue_models import Task
@@ -59,8 +60,8 @@ from helpers.results_models import Result, IOCDetection
 import openioc.openiocparser as openiocparser
 import openioc.ioc as ioc
 import remotecmd
+import utils
 
-threadname = uuid.uuid4().hex[:6]
 loggingiocscan = logging.getLogger('iocscanner.' + threadname)
 
 engine = create_engine(BASE_DE_DONNEES_QUEUE, echo=False)
@@ -76,6 +77,7 @@ dropList = [
     [os.path.join('resources','collecte.tar.gz'), 'collecte.tar.gz'],
     [os.path.join('resources','import_sql.tar.gz'), 'import_sql.tar.gz'],
     [os.path.join('resources','rmtar.bat'), 'rmtar.bat'],
+    [os.path.join('resources','getresults.bat'), 'getresults.bat'],
     [os.path.join('resources','hash.cfg'), 'hash.cfg'],
 ]
 
@@ -95,6 +97,24 @@ EndCommandList = [
     ['rmtar.bat import_sql.tar',0],
 ]
 
+def ioc_dict_from_trees(ioc_trees):
+    ioc_dictionary = {}
+
+    for ioc_id, ioc_object in ioc_trees.items():
+        leaves = ioc_object['tree'].getLeaves()
+
+        # IOC Tree evaluation
+        for uid, ioc in leaves.items():
+            # Do we know how to search for that ?
+            if ioc.document in ioc_modules.flatEvaluatorList.keys():
+                # Getting the dictionary for that category, or creating it
+                if not ioc.document in ioc_dictionary.keys():
+                    ioc_dictionary[ioc.document] = []
+
+                ioc.db_ioc_id = ioc_id
+                ioc_dictionary[ioc.document].append(ioc)
+
+    return ioc_dictionary
 
 
 # Scans the target defined by taregtObject
@@ -117,7 +137,7 @@ def scan(targetObject, IOCObjects, hostConfidential):
         loggingiocscan.info('Handler %s has been succesfully created' % HANDLER_NAME)
     # too bad, error in connection
     except Exception, e:
-        loggingiocscan.error('Handle '+HANDLER_NAME+' could not be created : '+str(e).decode('cp1252'))
+        loggingiocscan.error('Handler '+HANDLER_NAME+' could not be created : '+str(e).decode('cp1252'))
         return None
 
     drive = RemCom.setNet()
@@ -152,46 +172,24 @@ def scan(targetObject, IOCObjects, hostConfidential):
 
     if IOC_MODE == 'flat':
 
-        for IOCid, IOCObject in IOCObjects.items():
-            loggingiocscan.info('Searching for IOC %s (id=%d)' % (IOCObject['name'], IOCid))
+        ioc_dict = ioc_dict_from_trees(IOCObjects)
 
-            leaves = IOCObject['tree'].getLeaves()
+        for category, ioc_list in ioc_dict.items():
+            evlt = ioc_modules.flatEvaluatorList[category](loggingiocscan, None, RemCom, drive, IOC_KEEPFILES,
+                                                                hostConfidential, localFullname)
 
-            # IOC Tree evaluation
-            for uid, leaf in leaves.items():
-                if uid not in result.keys():
+            # Retrieves created file so we don't create them again (speed++)
+            newFiles = evlt.createInitFiles(initFilesPresent)
+            for newFile in newFiles:
+                initFilesPresent.append(newFile)
 
-                    # Do we know how to search for that ?
-                    if leaf.document in ioc_modules.flatEvaluatorList.keys():
+                if hostConfidential:
+                    RemCom.getFile(newFile, os.path.join(hostConfidential_LOCALNAME, newFile))
 
-                        # Instanciate the associated evaluator
-                        evlt = ioc_modules.flatEvaluatorList[leaf.document](loggingiocscan, leaf, RemCom, drive, IOC_KEEPFILES, hostConfidential, localFullname)
+            category_result = evlt.eval(TEMP_FILE, ioc_list)
+            raw_results.update(category_result)
 
-                        # Retrieves created file so we don't create them again (speed++)
-                        newFiles = evlt.createInitFiles(initFilesPresent)
-                        for newFile in newFiles:
-                            initFilesPresent.append(newFile)
-
-                            if hostConfidential:
-                                RemCom.getFile(newFile, os.path.join(hostConfidential_LOCALNAME, newFile))
-
-                        # Use TEMP_FILE for query transport to remote host
-                        # get the query result in "res"
-                        res, resData = evlt.eval(TEMP_FILE)
-
-                    # We don't know how to evaluate it, too bad...
-                    else:
-                        loggingiocscan.info('Setting result=UNDEFINED for '+leaf.document)
-                        res = ioc_modules.FlatEvltResult.UNDEF
-                        resData = None
-
-                    # Store result for IOC if we ever need to evaluate it again
-                    result[uid] = ioc_modules.FlatEvltResult._str(res)
-
-                data = None if resData is None else [e.decode(sys.stdout.encoding) for e in resData]
-                raw_results[leaf.id] = {'res':result[uid], 'iocid':IOCid, 'data': data}
-
-            loggingiocscan.info('Research for %s has ended' % IOCObject['name'])
+            loggingiocscan.info('Research for %s has ended' % category)
 
         # Remove files if not explicitly told to keep them
         # In the latter case, they are kept on the analyst computer, so erase them from the remote
@@ -429,7 +427,6 @@ def demarrer_scanner(hWaitStop=None, batch=None):
                 loggingiocscan.debug('===============================================================================')
                 loggingiocscan.debug('Wake up, there is work to do !')
                 loggingiocscan.info('Queue size : ' + str(taille_queue) + ', including ' + str(taille_a_scanner) + ' to scan, including ' + str(nbre_taches_priorite_max) + ' at top priority (' + str(priorite_max) + ')')
-
                 loggingiocscan.debug('  --------------------------------')
                 loggingiocscan.info('         Starting IOC Scan')
                 loggingiocscan.info('        Target : ' + str(tache.ip))
@@ -465,12 +462,12 @@ def demarrer_scanner(hWaitStop=None, batch=None):
                 # Let the scan begin
 
                 if cp.id in tree_by_cp.keys():
-                    
+
                     try:
-                        resultats_scan = scan(targetObject, tree_by_cp[cp.id], cp.host_confidential)  
+                        resultats_scan = scan(targetObject, tree_by_cp[cp.id], cp.host_confidential)
                     except remotecmd.ShutdownException:
-                        loggingiocscan.warning('Shutdown exception: %s, %s, %s' % (repr(e), str(e.message), str(e)))
-            
+                        loggingiocscan.warning('Shutdown exception: %s, %s' % (repr(e), str(e)))
+
                 else:
                     loggingiocscan.warning('No IOC to scan (profile=%s)' % cp.name)
                     resultats_scan = {}
@@ -490,16 +487,17 @@ def demarrer_scanner(hWaitStop=None, batch=None):
             loggingiocscan.debug('(IOC scanner sleeping for ' + str(SLEEP) + ' seconds...)' \
                 + (' (' + str(taille_queue) + ' waiting)' if taille_queue > 0 else ''))
             time.sleep(SLEEP)
-            
+
         except KeyboardInterrupt:
             halt = True
-            
-        
+
+
         except Exception, e:
-        
+
             exc_type, exc_obj, exc_tb = sys.exc_info()
-            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            loggingiocscan.error('Exception caught : %s, %s, %s [function %s, line %d]' % (repr(e), str(e.message), str(e), fname, exc_tb.tb_lineno))
+            loggingiocscan.error('Exception caught:')
+            for line in traceback.format_exc(exc_tb).splitlines():
+                loggingiocscan.error(line)
 
             # Cancel changes and unreserve task
             session.rollback()
