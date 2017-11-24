@@ -252,6 +252,10 @@ class EvaluatorInterface:
         result = {}
 
         ioc_list = self.filter_ioc_list(ioc_list)
+        
+        if len(ioc_list)==0:
+            return result
+        
         file_name, file_content = self.file_from_ioc_list(ioc_list)
         self.log('Loading file %s' % file_name, logging.DEBUG)
 
@@ -280,7 +284,7 @@ class EvaluatorInterface:
 
             # self.log('Downloading results from %s' % results_filename, logging.DEBUG)
             # TODO: find a clean way to get the localanalysis directory
-            extract_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'resources\\localanalysis\\')
+            extract_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'resources','localanalysis')
             rc.getFile(results_filename, os.path.join(extract_dir, results_filename))
 
             rc.deleteFile(results_filename)

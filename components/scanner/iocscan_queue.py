@@ -44,6 +44,7 @@ import sys
 import socket
 import time
 from threading import Lock
+import traceback
 import uuid
 
 # USER MODULES
@@ -136,7 +137,7 @@ def scan(targetObject, IOCObjects, hostConfidential):
         loggingiocscan.info('Handler %s has been succesfully created' % HANDLER_NAME)
     # too bad, error in connection
     except Exception, e:
-        loggingiocscan.error('Handle '+HANDLER_NAME+' could not be created : '+str(e).decode('cp1252'))
+        loggingiocscan.error('Handler '+HANDLER_NAME+' could not be created : '+str(e).decode('cp1252'))
         return None
 
     drive = RemCom.setNet()
@@ -426,7 +427,6 @@ def demarrer_scanner(hWaitStop=None, batch=None):
                 loggingiocscan.debug('===============================================================================')
                 loggingiocscan.debug('Wake up, there is work to do !')
                 loggingiocscan.info('Queue size : ' + str(taille_queue) + ', including ' + str(taille_a_scanner) + ' to scan, including ' + str(nbre_taches_priorite_max) + ' at top priority (' + str(priorite_max) + ')')
-
                 loggingiocscan.debug('  --------------------------------')
                 loggingiocscan.info('         Starting IOC Scan')
                 loggingiocscan.info('        Target : ' + str(tache.ip))
@@ -466,7 +466,7 @@ def demarrer_scanner(hWaitStop=None, batch=None):
                     try:
                         resultats_scan = scan(targetObject, tree_by_cp[cp.id], cp.host_confidential)
                     except remotecmd.ShutdownException:
-                        loggingiocscan.warning('Shutdown exception: %s, %s, %s' % (repr(e), str(e.message), str(e)))
+                        loggingiocscan.warning('Shutdown exception: %s, %s' % (repr(e), str(e)))
 
                 else:
                     loggingiocscan.warning('No IOC to scan (profile=%s)' % cp.name)
@@ -495,9 +495,9 @@ def demarrer_scanner(hWaitStop=None, batch=None):
         except Exception, e:
 
             exc_type, exc_obj, exc_tb = sys.exc_info()
-            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            loggingiocscan.error('Exception caught : %s, %s, %s [function %s, line %d]' % (repr(e), str(e.message), str(e), fname, exc_tb.tb_lineno))
-            raise e
+            loggingiocscan.error('Exception caught:')
+            for line in traceback.format_exc(exc_tb).splitlines():
+                loggingiocscan.error(line)
 
             # Cancel changes and unreserve task
             session.rollback()

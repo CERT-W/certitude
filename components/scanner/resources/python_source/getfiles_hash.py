@@ -47,28 +47,28 @@ def hashRec(dir):
         fnames = [os.path.join(dirpath, e) for e in filenames]
         
         for file in fnames:
-            if os.path.getsize(file) > MAX_HASH_SIZE:
-                continue
-                
-            if HASH_EXT_HASH_FILTER:
-                nameIdx = file.rfind('\\')
-                if nameIdx != -1:
-                    name = file[nameIdx:]
-                    extIdx = name.rfind('.')
-                    if extIdx != -1:
-                        ext = name[extIdx:]
-                        if ext not in EXT_HASH_FILTER:
+            try:
+                if os.path.getsize(file) > MAX_HASH_SIZE:
+                    continue
+                    
+                if HASH_EXT_HASH_FILTER:
+                    nameIdx = file.rfind('\\')
+                    if nameIdx != -1:
+                        name = file[nameIdx:]
+                        extIdx = name.rfind('.')
+                        if extIdx != -1:
+                            ext = name[extIdx:]
+                            if ext not in EXT_HASH_FILTER:
+                                continue
+                        else:
                             continue
                     else:
                         continue
-                else:
-                    continue
-            
-            md5 = '0'*32
-            sha1 = '0'*40
-            sha256 = '0'*64
-            
-            try:
+                
+                md5 = '0'*32
+                sha1 = '0'*40
+                sha256 = '0'*64
+                
                 f = open(file, 'rb')
             
                 md5 = hashlib.md5(f.read()).hexdigest()
@@ -79,15 +79,12 @@ def hashRec(dir):
                 
                 sha256 = hashlib.sha256(f.read()).hexdigest()
                 f.seek(0)
-            except Exception, e:
-                pass
-                
-            try:
                 f.close()
+                    
+                print '%s\t%s\t%s\t%s' % (file, md5, sha1, sha256)
             except Exception, e:
                 pass
-                
-            print '%s\t%s\t%s\t%s' % (file, md5, sha1, sha256)
+
 
 def getFilesHash():
 
