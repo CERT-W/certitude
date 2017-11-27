@@ -60,7 +60,7 @@ from helpers.results_models import Result, IOCDetection
 import openioc.openiocparser as openiocparser
 import openioc.ioc as ioc
 import remotecmd
-import utils
+import shutil
 
 logginghashscan = logging.getLogger('hashcanner.' + threadname)
 
@@ -219,7 +219,7 @@ def scan(targetObject, IOCObjects, hostConfidential):
     # If data has been retrieved, erase it if not instructed otherwise
     if hostConfidential and not IOC_KEEPFILES:
         logginghashscan.info('Wiping local data')
-        a = os.popen('rmdir /s %s' % os.path.join(IOC_COMPONENT_ROOT, hostConfidential_LOCALNAME)).read()
+        shutil.rmtree(os.path.join(IOC_COMPONENT_ROOT, hostConfidential_LOCALNAME))
 
     RemCom.unsetNet()
     RemCom.exit()

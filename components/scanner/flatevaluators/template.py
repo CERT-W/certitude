@@ -290,7 +290,8 @@ class EvaluatorInterface:
             rc.deleteFile(results_filename)
 
             self.log('Extracting results from %s' % os.path.join(extract_dir, results_filename), logging.DEBUG)
-            tar = tarfile.open(os.path.join(extract_dir, results_filename), 'r:gz')
+            tarname = os.path.join(extract_dir, results_filename)
+            tar = tarfile.open(tarname, 'r:gz')
             # 'r|gz' might be used for better perf & stream-mode reading ?
 
             self.log('Found %s' % tar.getnames(), logging.DEBUG)
@@ -315,6 +316,9 @@ class EvaluatorInterface:
                 result[tmp_id] = {'res': evltResult._str(ret), 'iocid':tmp_db_ioc_id, 'data': res_data}
 
             tar.close()
+            
+            if not self.__keepFiles:
+                os.remove(tarname)
 
         return result
 
