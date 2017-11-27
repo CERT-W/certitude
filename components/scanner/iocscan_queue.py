@@ -504,6 +504,8 @@ def demarrer_scanner(hWaitStop=None, batch=None):
             if tache is not None:
                 tache.reserved_ioc = False
                 tache.retries_left_ioc = max(0,tache.retries_left_ioc - 1)
+                tache.last_retry_ioc = datetime.datetime.now()
+                
             session.commit()
 
 

@@ -505,6 +505,8 @@ def demarrer_scanner(hWaitStop=None, batch=None):
             if tache is not None:
                 tache.reserved_hash = False
                 tache.retries_left_hash = max(0,tache.retries_left_hash - 1)
+                tache.last_retry_hash = datetime.datetime.now()
+                
             session.commit()
 
 
