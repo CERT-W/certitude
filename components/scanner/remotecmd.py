@@ -28,7 +28,11 @@ import socket
 from psexec import remcomsvc, smbconnection, transport, dcerpc, srvsvc, svcctl, structure, pipes
 from impacket import nt_errors
 import logging
-import sys, time, os, random, string
+import os
+import random
+import string
+import sys
+import time
 
 ###################
 #                 #
@@ -679,12 +683,19 @@ class RemoteCmd:
         self.__log__(LEVEL_INFODBG, 'Deleting file ' + filename)
         filename = self.activeDirName+'\\'+filename if useWd else filename
 
-        try:
-            self.__connection.deleteFile(self.__writableShare, filename)
-        except smbconnection.SessionError, e:
-            self.__log__(errorLevel, 'Cannot delete '+filename+': ',e)
-            if errorLevel == LEVEL_CRITICAL:
-                self.__exit(True)
+        retrycount=0
+        while retrycount!=5:
+            try:
+                self.__connection.deleteFile(self.__writableShare, filename)
+                return
+                
+            except smbconnection.SessionError, e:
+                self.__log__(errorLevel, 'Cannot delete '+filename+': ',e)
+                retrycount += 1
+                time.sleep(retrycount)
+        
+        if errorLevel == LEVEL_CRITICAL:
+            self.__exit(True)
 
 
     ######
