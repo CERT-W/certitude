@@ -11,3 +11,4 @@ pyasn1
 lxml
 pyopenssl
 ply
+pycrypto
