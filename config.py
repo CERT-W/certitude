@@ -33,6 +33,11 @@ CONSOLE_VERBOSE = logging.DEBUG
 DOSSIER_LOG = '_log/'
 FORMAT_LOGS = '%(asctime)s %(name)-14s %(levelname)-8s %(message)s'
 
+
+# Listening
+LISTEN_ADDRESS = '127.0.0.1'
+LISTEN_PORT = 5000
+
 # SSL configuration
 USE_SSL = False
 SSL_KEY_FILE = 'ssl\\server.pem.key'

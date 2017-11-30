@@ -49,7 +49,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import netaddr
 
-from config import IOC_MODE, DEBUG, USE_SSL, SSL_KEY_FILE, SSL_CERT_FILE, BASE_DE_DONNEES_QUEUE, SECONDES_POUR_RESCAN
+from config import IOC_MODE, DEBUG, USE_SSL, SSL_KEY_FILE, SSL_CERT_FILE, BASE_DE_DONNEES_QUEUE, SECONDES_POUR_RESCAN, LISTEN_ADDRESS, LISTEN_PORT
 from helpers.queue_models import Task
 from helpers.results_models import Result, IOCDetection
 from helpers.misc_models import User, ConfigurationProfile, WindowsCredential, XMLIOC, Batch, GlobalConfig
@@ -693,12 +693,16 @@ def hostjson(hostid):
     # list of GUID per IOC
     guids = {i: {} for i in ioc_list}
     for iocd in ioc_detections:
-        jdata = json.loads(iocd.indicator_data)
-
-        if jdata is not None:
-            ioc_data = [str(escape(d)) for d in jdata]
-        else:
+        if iocd.indicator_data is None:
             ioc_data = []
+            
+        else:
+            jdata = json.loads(iocd.indicator_data)
+
+            if jdata is not None:
+                ioc_data = [str(escape(d)) for d in jdata]
+            else:
+                ioc_data = []
             
         guids[iocd.xmlioc_id][iocd.indicator_id] = ioc_data
         # guids[iocd.xmlioc_id][iocd.indicator_id] = str(escape(iocd.indicator_data))
@@ -954,6 +958,14 @@ def api_json():
         if not priority_hash > 0:
             priority_hash = 10
 
+        # Priority Yara
+        try:
+            priority_yara = int(param.get('priority_yara'))
+        except:
+            priority_yara = 10
+        if not priority_yara > 0:
+            priority_yara = 10
+
         # Retries count (IOC)
         essais_ioc = param.get('retries_ioc')
         if essais_ioc is not None:
@@ -964,14 +976,6 @@ def api_json():
                 retries_left_ioc = 10
         else:
             retries_left_ioc = 10
-
-        # Priority Yara
-        try:
-            priority_yara = int(param.get('priority_yara'))
-        except:
-            priority_yara = 10
-        if not priority_yara > 0:
-            priority_yara = 10
 
         # Retries count (hash)
         essais_hash = param.get('retries_hash')
@@ -1197,7 +1201,8 @@ def run_server():
 
     loggingserver.info('Web interface starting')
     app.run(
-        host='127.0.0.1',
+        host=LISTEN_ADDRESS,
+        port=LISTEN_PORT,
         debug=DEBUG,
         ssl_context=context
     )
