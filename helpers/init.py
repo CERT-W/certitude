@@ -32,7 +32,7 @@ from results_models import Result, IOCDetection
 from queue_models import Task
 from misc_models import User, GlobalConfig, XMLIOC, ConfigurationProfile, WindowsCredential
 from yara_models import YaraRule, YaraDetection
-from helpers import hashPassword, checksum
+from helpers import hashPassword, checksum, verifyPassword
 import crypto
 import getpass
 import base64
@@ -51,14 +51,6 @@ WindowsCredential.metadata.create_all(engine)
 YaraRule.metadata.create_all(engine)
 YaraDetection.metadata.create_all(engine)
 
-# Modules
-# for module in MODULES_CONSO:
-    # result_module = getattr(
-        # __import__(
-            # "modules." + module + '.models',
-            # fromlist=['Result']
-        # ), 'Result')
-    # result_module.metadata.create_all(engine)
 
 engine = create_engine(BASE_DE_DONNEES_QUEUE, echo=False)
 session = sessionmaker(bind=engine)()
@@ -72,6 +64,10 @@ while True:
     password = getpass.getpass('Please enter "seeker" password: ')
     password2 = getpass.getpass('Repeat: ')
 
+    if not verifyPassword(password):
+        print '[x] Password is not complex enough'
+        continue
+    
     if password==password2:
         break
 
