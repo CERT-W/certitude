@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 '''
     CERTitude: the seeker of IOC
-    Copyright (c) 2016 CERT-W
+    Copyright (c) 2017 CERT-W
     
     Contact: cert@wavestone.com
     Contributors: @iansus, @nervous, @fschwebel
@@ -62,11 +62,10 @@ class EvaluatorInterface:
         logger.setLevel(level)
 
     # Init stuff
-    def __init__(self, logger, ioc, remoteCommand, wd, keepFiles, confidential, dirname):
+    def __init__(self, logger, ioc, remoteCommand, keepFiles, confidential, dirname):
 
         self.__ioc = ioc
         self.__remoteCommand = remoteCommand
-        self.__wd = wd
         self.__initFiles = {}
         self.__dbname = ''
         self.__bypass = False
@@ -90,19 +89,18 @@ class EvaluatorInterface:
             if initFile not in existingFiles and ((not useOld) or (not self.__remoteCommand.fileExists(initFile))):
                 newFiles.append(initFile)
                 for no, cmd in initCommands.items():
-                    self.__remoteCommand.execCommand(cmd, self.__wd)
+                    self.__remoteCommand.execute(cmd, True)
 
         return newFiles
 
     def getIOC(self):
         return self.__ioc
-
-    def getWD(self):
-        return self.__wd
+        
 
     def getRemoteCommand(self):
         return self.__remoteCommand
 
+        
     ############
     #
     #    Sets the private params from the child
@@ -161,7 +159,6 @@ class EvaluatorInterface:
         # private attribute for child class
         ioc = self.getIOC()
         rc = self.getRemoteCommand()
-        wd = self.getWD()
 
         select = ioc.select.replace('%s/'%ioc.document, '')
 
@@ -218,8 +215,8 @@ class EvaluatorInterface:
                 localcommand = 'type "%s" | "%s" "%s"' % (valueFile, sqlite3loc, dbloc)
                 res = os.popen(localcommand).read().replace('\r','').replace('\n','')
             else:
-                rc.dropFile(valueFile, 'query.sql', True, False)
-                res = rc.execCommand('type query.sql | sqlite3 %s' % self.__dbName, wd)
+                rc.dropFile(valueFile, 'query.sql', False)
+                res = rc.execute('type query.sql | sqlite3 %s' % self.__dbName, True)
                 rc.deleteFile('query.sql')
 
             self.log('query returned "%s"' % res, logging.DEBUG)
@@ -247,7 +244,7 @@ class EvaluatorInterface:
 
         # private attribute for child class
         rc = self.getRemoteCommand()
-        wd = self.getWD()
+        useWorkingDirectory = True
 
         result = {}
 
@@ -271,16 +268,16 @@ class EvaluatorInterface:
             # localcommand = 'type "%s" | "%s" "%s"' % (value_file, sqlite3loc, dbloc)
             # res = os.popen(localcommand).read().replace('\r', '').replace('\n', '')
         else:
-            rc.dropFile(value_file, file_name, True, False)
+            rc.dropFile(value_file, file_name, False)
             file_identifier = '%s.%s' % (threadname, ioc_list[0].document.lower())
 
             results_filename = '%s.tar.gz' % (file_identifier)
 
             # self.log('Running the sql file %s' % file_name, logging.DEBUG)
-            rc.execCommand('type %s | sqlite3 %s' % (file_name, self.__dbName), wd)
+            rc.execute('type %s | sqlite3 %s' % (file_name, self.__dbName), useWorkingDirectory)
 
             # self.log('Compressing results from %s' % file_identifier, logging.DEBUG)
-            rc.execCommand('getresults.bat %s' % (file_identifier), wd)
+            rc.execute('getresults.bat %s' % (file_identifier), useWorkingDirectory)
 
             # self.log('Downloading results from %s' % results_filename, logging.DEBUG)
             # TODO: find a clean way to get the localanalysis directory

@@ -24,38 +24,41 @@
 '''
 
 import logging
+import os
 
 # Global
 # ======
-## passage en mode debug : log plus d'infos sur le déroulement
+
+# Flask debug mode
 DEBUG = True
-CONSOLE_VERBOSE = logging.DEBUG
-DOSSIER_LOG = '_log/'
+CONSOLE_DEBUG_LEVEL = logging.DEBUG
+LOG_DIRECTORY = '_log'
 FORMAT_LOGS = '%(asctime)s %(name)-14s %(levelname)-8s %(message)s'
 
 
 # Listening
 LISTEN_ADDRESS = '127.0.0.1'
 LISTEN_PORT = 5000
+BOKEH_LISTEN_ADDRESS = '127.0.0.2'
+BOKEH_LISTEN_PORT = 8000
 
 # SSL configuration
 USE_SSL = False
-SSL_KEY_FILE = 'ssl\\server.pem.key'
-SSL_CERT_FILE = 'ssl\\server.pem.cer'
+SSL_KEY_FILE = os.path.join('ssl','server.pem.key')
+SSL_CERT_FILE = os.path.join('ssl','server.pem.cer')
 
 
 INTERFACE_HASH_SALT = '' # nocommit
-SECONDES_POUR_RESCAN = 300 # secondes mini entre un résultat et une nouvelle demande
-
-SLEEP = 5 # nombre de secondes entre les interrogations de la base
-SECONDES_ENTRE_TENTATIVES = 300 # secondes entre les essais sur une même IP
-BASE_DE_DONNEES_QUEUE = "sqlite:///data.db"
+SLEEP = 5 # second interval between database poll
+MIN_SUBMIT_INTERVAL = 300 # min second interval between two submissions of same IP address
+MIN_RESCAN_INTERVAL = 300 # min second interval between two consecutive scans on same IP address
+CERTITUDE_DATABASE = "sqlite:///data.db"
 
 # IOC Scanner
 # ===========
 
 IOC_MODE = 'flat'           # flat | logic ## DO NOT USE "logic" for now !!!
 IOC_KEEPFILES = False       # True | False
-IOC_CONFIDENTIAL_DIRECTORY = 'DR_PLUS' # \components\iocscan\DR_PLUS
-IOC_COMPONENT_ROOT = 'components\\scanner'
-IOC_TEMP_DIR = 'components\\scanner\\tmp'
+IOC_CONFIDENTIAL_DIRECTORY = 'DR_PLUS'
+IOC_COMPONENT_ROOT = os.path.join('components','scanner')
+IOC_TEMP_DIR = os.path.join('components','scanner','tmp')

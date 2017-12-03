@@ -1,0 +1,15 @@
+-e git+https://github.com/8u1a/plyara.git#egg=plyara
+bokeh
+dnspython
+flask
+flask-login
+impacket
+lxml
+netaddr
+pandas
+pbkdf2
+ply
+pyasn1
+pycryptodome
+pyopenssl
+sqlalchemy

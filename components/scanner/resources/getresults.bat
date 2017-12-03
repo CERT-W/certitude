@@ -12,4 +12,5 @@ REM Compresses it
 gzip.exe %1.tar
 
 REM Deletes the remaining files
-del %1.*.res %1.*.sql
+del /q %1.*.res 2>&1
+del /q %1.sql 2>&1

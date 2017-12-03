@@ -29,14 +29,15 @@ if __name__ == "__main__" and __package__ is None:
 # Imports
 # Lots of them...
 #
-import os
-import json
-import ssl
-import base64
-import logging
-import datetime
-import subprocess
 import atexit
+import base64
+import datetime
+import json
+import logging
+import os
+import ssl
+import subprocess
+import sys
 
 try:
     import win32event
@@ -49,7 +50,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import netaddr
 
-from config import IOC_MODE, DEBUG, USE_SSL, SSL_KEY_FILE, SSL_CERT_FILE, BASE_DE_DONNEES_QUEUE, SECONDES_POUR_RESCAN, LISTEN_ADDRESS, LISTEN_PORT
+from config import LISTEN_ADDRESS, LISTEN_PORT, BOKEH_LISTEN_ADDRESS, BOKEH_LISTEN_PORT
+from config import IOC_MODE, DEBUG, USE_SSL, SSL_KEY_FILE, SSL_CERT_FILE, CERTITUDE_DATABASE, MIN_SUBMIT_INTERVAL
 from helpers.queue_models import Task
 from helpers.results_models import Result, IOCDetection
 from helpers.misc_models import User, ConfigurationProfile, WindowsCredential, XMLIOC, Batch, GlobalConfig
@@ -73,7 +75,7 @@ from plyara.plyara import PlyaraParser
 loggingserver = logging.getLogger('api')
 
 # Create database
-engine = create_engine(BASE_DE_DONNEES_QUEUE, echo=False)
+engine = create_engine(CERTITUDE_DATABASE, echo=False)
 dbsession = sessionmaker(bind=engine)()
 
 
@@ -134,7 +136,13 @@ bokeh_process = None
 # Preventing Flask from running Bokeh twice
 # source : https://stackoverflow.com/questions/9449101/how-to-stop-flask-from-initialising-twice-in-debug-mode
 if not DEBUG or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-    bokeh_process = subprocess.Popen(['bokeh', 'serve', 'crossbokeh.py'], stdout=subprocess.PIPE)
+    bokeh_process = subprocess.Popen([
+        'bokeh', 
+        'serve', 'crossbokeh.py', 
+        '--address', BOKEH_LISTEN_ADDRESS, 
+        '--port', str(BOKEH_LISTEN_PORT),
+        '--allow-websocket-origin', '%s:%d' % (BOKEH_LISTEN_ADDRESS, BOKEH_LISTEN_PORT),
+    ], stdout=subprocess.PIPE)
 
 @atexit.register
 def kill_server():
@@ -210,7 +218,7 @@ def logout():
 @app.route('/users')
 @requires_auth
 def users():
-    allUsers = dbsession.query(User).order_by('id ASC')
+    allUsers = dbsession.query(User).order_by(User.id.asc())
     return render_template('user-list.html', users=allUsers)
 
 
@@ -394,6 +402,16 @@ def xmliocDelete(xmliocid):
     if xi is None:
         return redirect(app.jinja_env.globals['url_for']('config'))
 
+    cps = dbsession.query(ConfigurationProfile).all()
+    
+    for cp in cps:
+        ioclist = map(int, cp.ioc_list.split(','))
+        if xi.id in ioclist:
+            ioclist.remove(xi.id)
+            
+        cp.ioc_list = ','.join(map(str, ioclist))
+        dbsession.add(cp)
+        
     dbsession.delete(xi)
     dbsession.commit()
 
@@ -429,7 +447,7 @@ def wincredAdd():
         success = True
         errors = []
 
-        user_password = request.form['user_password']
+        user_password = request.form['user_password'].encode(sys.stdout.encoding)
         user = dbsession.query(User).filter_by(id=session['user_id']).first()
 
         # Password incorrect
@@ -455,14 +473,14 @@ def wincredAdd():
                 success = False
 
         if success:
-            account_password = request.form['password']
+            account_password = request.form['password'].encode(sys.stdout.encoding)
             encrypted_account_password = crypto.encrypt(account_password, MASTER_KEY)
             del MASTER_KEY
 
             # Encrypt Windows Credential's password
             wc = WindowsCredential(
-                domain=request.form['domain'],
-                login=request.form['login'],
+                domain=request.form['domain'].encode(sys.stdout.encoding),
+                login=request.form['login'].encode(sys.stdout.encoding),
                 encrypted_password=encrypted_account_password)
 
             dbsession.add(wc)
@@ -595,9 +613,7 @@ def massvisualizationbatch(batchid):
     else:
         csv_url = url_for('static', filename='data/results.csv/' + str(batch.id))
 
-        # iframe = '<iframe src="http://localhost:5006/crossbokeh?batchid={}" style="position: fixed;width:100%;height:100%;border:none;overflow-y: scroll;overflow-x: hidden;margin:0;padding:0;overflow:hidden;" frameborder="0" scrolling="yes" marginheight="0" marginwidth="0"></iframe>'.format(batchid)
-        iframe = '<iframe src="http://localhost:5006/crossbokeh?batchid={}" style="width:900px; height: 1000px; margin: 0 auto; display:block;" frameborder="0" scrolling="no" marginheight="0" marginwidth="0"></iframe>'.format(
-            batchid)
+        iframe = '<iframe src="http://%s:%d/crossbokeh?batchid=%s" style="width:900px; height: 1000px; margin: 0 auto; display:block;" frameborder="0" scrolling="no" marginheight="0" marginwidth="0"></iframe>' % (BOKEH_LISTEN_ADDRESS, BOKEH_LISTEN_PORT, batchid)
 
         return render_template('mass-visualizations-batch.html', bokeh_script=iframe, batch=batch)
 
@@ -1043,7 +1059,7 @@ def api_json():
 
                     if param.get('force', None) is None:
                         limite_avant_nouvel_essai = datetime.datetime.now() - datetime.timedelta(0,
-                                                                                                 SECONDES_POUR_RESCAN)
+                                                                                                 MIN_SUBMIT_INTERVAL)
                         if dbsession.query(Result).filter(Result.ip == str(ipa),
                                                           Result.finished >= limite_avant_nouvel_essai).count() > 0:
                             reponse['ips'][str(ipa)] = 'already scanned a few moments ago...'
@@ -1154,6 +1170,16 @@ def yaraDelete(yaraid):
     if yi is None:
         return redirect(app.jinja_env.globals['url_for']('config'))
 
+    cps = dbsession.query(ConfigurationProfile).all()
+    
+    for cp in cps:
+        yaralist = map(int, cp.yara_list.split(','))
+        if yi.id in ioclist:
+            ioclist.remove(yi.id)
+            
+        cp.yaralist_list = ','.join(map(str, yaralist))
+        dbsession.add(cp)
+        
     dbsession.delete(yi)
     dbsession.commit()
 

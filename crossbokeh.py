@@ -3,7 +3,7 @@ import io
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from config import BASE_DE_DONNEES_QUEUE
+from config import CERTITUDE_DATABASE, LISTEN_ADDRESS, LISTEN_PORT
 
 from helpers.queue_models import Task
 from helpers.results_models import Result, IOCDetection
@@ -48,7 +48,7 @@ def getInfosFromXML(content):
     return r
 
 def getDataframeFromBatchid(batchid):
-    engine = create_engine(BASE_DE_DONNEES_QUEUE, echo=False)
+    engine = create_engine(CERTITUDE_DATABASE, echo=False)
     dbsession = sessionmaker(bind=engine)()
 
     columns = ['HostId','HostnameIP' , 'Lookup:Success' , 'Lookup:IOCScanned' , 'Lookup:HashScanned', 'Lookup:Subnet' , 'Malware', 'Compromise']
@@ -133,7 +133,7 @@ columns = [
         TableColumn(field="Lookup:Subnet", title="Subnet"),
         TableColumn(field='HostId', title='Result',
                     formatter=HTMLTemplateFormatter(
-                    template='<a href="http://localhost:5000/host-result/<%= value %>" target="_blank">#<%= value %></a>'))
+                    template='<a href="http://%s:%d/host-result/<%%= value %%>" target="_blank">#<%%= value %%></a>' % (LISTEN_ADDRESS, LISTEN_PORT)))
 
 ]
 data_table = DataTable(source=source, columns=columns, fit_columns=True)

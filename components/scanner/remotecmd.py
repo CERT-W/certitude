@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 '''
     CERTitude: the seeker of IOC
-    Copyright (c) 2016 CERT-W
+    Copyright (c) 2017-CERT-W
     
     Contact: cert@wavestone.com
     Contributors: @iansus, @nervous, @fschwebel
@@ -23,38 +23,30 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 '''
 
-import socket
-
-from psexec import remcomsvc, smbconnection, transport, dcerpc, srvsvc, svcctl, structure, pipes
-from impacket import nt_errors
+import base64
+import cmd
+import getpass
 import logging
 import os
 import random
 import string
 import sys
+import traceback
 import time
+from threading import Thread, Lock
 
-###################
-#                 #
-#  CONFIGURATION  #
-#                 #
-###################
+from impacket import nt_errors, version, smb
+from impacket.smbconnection import SMBConnection, FILE_READ_DATA, FILE_WRITE_DATA, FILE_APPEND_DATA, SessionError
+from impacket.dcerpc.v5 import transport, scmr
+from impacket.structure import Structure
+import pipes
 
+
+# Options
 PROGRAM_NAME = 'CERTitude'
-FILE_READ_DATA = smbconnection.FILE_READ_DATA
-FILE_WRITE_DATA = smbconnection.FILE_WRITE_DATA
-FILE_APPEND_DATA = smbconnection.FILE_APPEND_DATA
-
-# Logging options
-
-LEVEL_CRITICAL = logging.CRITICAL
-LEVEL_ERROR = logging.ERROR
-LEVEL_WARNING = logging.WARNING
-LEVEL_INFO = logging.INFO
-LEVEL_INFODBG = logging.DEBUG
 
 # Structure for RemComSvc incoming packets
-class RemComMessage(structure.Structure):
+class RemComMessage(Structure):
     structure = (
         ('Command','4096s=""'),
         ('WorkingDir','260s=""'),
@@ -79,25 +71,41 @@ DEFAULT_PRIORITY = PRIORITY_NORMAL
 
 
 # Structure for RemComSvc outgoing packets
-class RemComResponse(structure.Structure):
+class RemComResponse(Structure):
     structure = (
         ('ErrorCode','<L=0'),
         ('ReturnCode','<L=0'),
     )
-
-
-# Custom exception
-class WritableShareException(Exception):
-    pass
-
-class StartupException(Exception):
+    
+    
+class LoginError(Exception):
     pass
     
-class ShutdownException(Exception):
+    
+class SetupError(Exception):
+    pass     
+    
+    
+class CleanupError(Exception):
+    pass    
+    
+    
+class CommandError(Exception):
+    pass    
+    
+    
+class DriveError(Exception):
+    pass    
+    
+    
+class FileError(Exception):
     pass
+    
 
-
-
+def getRandomName(l=8):
+    return ''.join([random.choice(string.letters+string.digits) for i in range(l)])
+    
+    
 # Remote Command class
 #
 #   Arguments :
@@ -108,659 +116,486 @@ class ShutdownException(Exception):
 class RemoteCmd:
 
     REMCOMSVC_LOCAL = os.path.join('resources','RemComSvc.exe')
-    REMCOMSVC_REMOTE = 'rcs.exe'
-    REMCOMSVC_SERVICE_NAME = PROGRAM_NAME + '-RCS'
-    REMCOMSVC_SERVICE_DESC = 'Remote Command provided by CERTitude (c) Solucom 2014'
+    REMCOMSVC_REMOTE = 'RemComSvc.exe'
+    REMCOMSVC_SERVICE_NAME = PROGRAM_NAME + '-SVC'
+    REMCOMSVC_SERVICE_DESC = 'Remote Command provided by CERTitude (c) Wavestone 2017'
 
 
-    ######
-    #
-    #   Logging functionality
-    #   CRITICAL logs automatically stop the program
-    #
-    def __log__(self, debugLevel, message, exception=''):
+    # LOGGER FUNCTION
+    def __log__(self, debugLevel, message, exception=None):
 
         import inspect
         func = inspect.currentframe().f_back.f_code
-        
-        m = self.__login + '@' + self.__ip + ' [' + func.co_name + '] ' + message.decode('cp1252')
 
-        if exception!='':
-            m += ' (%s)' % str(exception)
-
+        m = '%s@%s\t%-30s\t%s' % (self.__login.encode(sys.stdout.encoding), self.__ip.encode(sys.stdout.encoding), func.co_name, message)
         self.logger.log(debugLevel, m)
 
+        if exception is not None:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            for line in traceback.format_exc(exc_tb).splitlines():
+                self.logger.log(debugLevel, line)
 
-    #######
-    #
-    #   Constructor
-    #   Does the setup
-    #
+
+
+    # CONSTRUCTOR
     def __init__(self, threadname, ip, login, password, **kwargs):
 
-    # init variables
+        self.logger = logging.getLogger('remotecmd.' + threadname)
+        if 'verbosity' in kwargs.keys():
+            self.logger.setLevel(kwargs['verbosity'])
 
+        # Init variables
         self.__ip = ip
         self.__login = login
 
-    #KWargs
-
-        self.logger = logging.getLogger('remotecmd.' + threadname)
+        # KWargs
         domain = DEFAULT_DOMAIN if 'domain' not in kwargs.keys() else kwargs['domain']
         commandPriority = DEFAULT_PRIORITY if 'priority' not in kwargs.keys() else kwargs['priority']
-
-    # Control variables : what did I set up ?
-        self.__loggedIn = False
-        self.__treeConnected = False
-        self.__directoryCreated = False
-        self.__ServiceManagerOpened = False
-        self.__remcomDropped = False
-        self.__serviceCreated = False
-        self.__serviceStarted = False
-        self.__serviceLaunched = False
-
-        self.__connection = None
-        self.__connection = smbconnection.SMBConnection(login+'_'+ip, ip, socket.gethostname(), 445, 3600, smbconnection.SMB2_DIALECT_21)
-        self.__commandPriority = commandPriority
-        self.__writableShareId = None
+        self.rootDir = '.' if not 'rootDir' in kwargs.keys() else kwargs['rootDir']
+        
+        # Local variables
+        self.__rootDir = '.' if 'rootDir' not in kwargs.keys() else kwargs['rootDir']
         self.__writableShare = None
-        self.__serviceManager = None
+        self.__workingDirectory = None
+        self.__SVCManager = None
         self.__service = None
-        self.activeDirName = PROGRAM_NAME + '-active'
+        self.drive = None
+        
+        # Setup & cleanup actions
+        self.__pendingCleanupActions = []
+        self.__pendingSetupActions = [
+            (self.__findWritableShare, 3),
+            (self.__createWorkingDirectory, 3),
+            (self.__openSVCManager, 3),
+            (self.__createService, 3),
+            (self.__dropBinary, 3),
+            (self.__startService, 3),
+            (self.__setNet, 1),
+        ]
 
-        self.rootDir = '.' if 'rootDir' not in kwargs.keys() else kwargs['rootDir']
-
-        # Try to setup the program
+        # Transport connection
+        self.__rpctransport = transport.DCERPCTransportFactory('ncacn_np:%s[\pipe\svcctl]' % ip)
+        self.__rpctransport.set_dport(445)
+        self.__rpctransport.set_credentials(login, password, domain, '', '', '')
+        self.__rpctransport.set_kerberos(False, '')
+        self.__dcerpc = self.__rpctransport.get_dce_rpc()
+        
+        # Initiate login
         try:
-            self.__setup(ip, login, password, domain)
-        except Exception,e :
-            self.__log__(LEVEL_CRITICAL,'Error during setup',e)
-            raise e
+            self.__dcerpc.connect()
+            self.__smbconnection = self.__rpctransport.get_smb_connection()
+            self.__log__(logging.INFO, 'Login successful')
             
-
-
-    ######
-    #
-    #   Setup function
-    #   Boots the different functionnalities, such as :
-    #       writable share
-    #       working directory
-    #       service manager
-    #       ...
-    #
-    def __setup(self,ip, login, password, domain = ''):
-
-        # Log in
-        self.__connection.login(login, password, domain)
-        self.__log__(LEVEL_INFODBG, 'Connection successful')
-        self.__loggedIn = True
-
-        # Search for usable share
-        try:
-            self.__writableShare = self.__findWritableShare()
-        except WritableShareException,e:
-            self.__log__(LEVEL_CRITICAL,'',e)
-            self.__exit(True)
-            return
-
-        self.__writableShareId = self.__connection.connectTree(self.__writableShare)
-        self.__log__(LEVEL_INFODBG, 'Tree connected')
-        self.__treeConnected = True
-
-        # Tries to create working directory
-        # Uses existing if we can
-        try:
-            self.__connection.createDirectory(self.__writableShare, self.activeDirName)
-        except smbconnection.SessionError, e:
-            if e.getErrorCode()!=nt_errors.STATUS_OBJECT_NAME_COLLISION:
-                raise
-
-        self.__directoryCreated = True
-        self.__log__(LEVEL_INFODBG, 'Directory created')
-
-        # opens service manager
-        self.__serviceManager = self.__openServiceManager()
-        self.__ServiceManagerOpened = True
-        self.__log__(LEVEL_INFODBG, 'Service Manager opened')
-
-        # drop RemComSvc binary
-        lpath = RemoteCmd.REMCOMSVC_LOCAL
-        self.dropFile( lpath, RemoteCmd.REMCOMSVC_REMOTE)
-        self.__log__(LEVEL_INFODBG, 'RemCom service binary dropped')
-
-        self.__remcomDropped = True
-
-        # Creates RemComSvc service
-        self.__createService(RemoteCmd.REMCOMSVC_SERVICE_NAME, RemoteCmd.REMCOMSVC_SERVICE_DESC, RemoteCmd.REMCOMSVC_REMOTE)
-        self.__serviceCreated = True
-        self.__log__(LEVEL_INFODBG, 'RemCom service has been created')
-
-        # And start it !
-        self.__startService()
-        self.__serviceStarted = True
-        self.__log__(LEVEL_INFODBG, 'RemCom service has been started')
-
-
-    ######
-    #
-    #   Destructor
-    #   called by CRITICAL log and by del actions
-    #   should be called upon program termination by the GC
-    #
-    def __exit(self, fromError=False):
-
-        try:
-            self.__unsetup()
-        except Exception, e:
-            self.logger.critical('Cleanup error: '+str(e).replace('\n', ' - '))
-            raise ShutdownException('Handler %s had to exit, remote cleanup might not be perfect...' % (self.__login + '@' + self.__ip))
-
-        if fromError:
-            raise Exception('Handler %s had to be shutdown' % (self.__login + '@' + self.__ip))
-
+        except SessionError, e:
+            raise LoginError('Error during login: %s' % e.getErrorString()[0])
+    
+    
+    # SETUP function
+    def setup(self):
+    
+        while len(self.__pendingSetupActions)>0:
+            action, count = self.__pendingSetupActions.pop(0)
             
-    def exit(self):
-        self.__exit()
+            c=1
+            while c<=count:
+                try:
+                    action()
+                    break
+                    
+                except Exception, e:
+                    self.__log__(logging.ERROR, 'error in %s, sleep %ds' % (action.__name__, c), e)
+                    c += 1
+                    time.sleep(c)
+                    
+            if count<c:
+                self.__log__(logging.CRITICAL, 'Fatal error during setup - proceeding to cleanup')
+                self.cleanup()
+                raise SetupError('Could not setup service, aborting')
             
-    ######
-    #
-    #   Unsetup function
-    #   undo what the setup did
-    #
-    def __unsetup(self):
-
-        # Stop remcomsvc
-        if self.__serviceStarted:
-            self.__rpcsvc.StopService(self.__service['ContextHandle'])
-            self.__log__(LEVEL_INFODBG, 'RemCom service has been stopped')
-
-        # Deletes RemComSvc
-        if self.__serviceCreated:
-
-            self.__rpcsvc.DeleteService(self.__service['ContextHandle'])
-            self.__rpcsvc.CloseServiceHandle(self.__service['ContextHandle'])
-            self.__log__(LEVEL_INFODBG, 'RemCom service deleted')
-
-        # Deletes RemComSvc binary
-        if self.__remcomDropped:
-            self.deleteFile(RemoteCmd.REMCOMSVC_REMOTE, LEVEL_ERROR)
-            self.__log__(LEVEL_INFODBG, 'RemCom service binary deleted')
-
-        # Closes Service manager
-        if self.__ServiceManagerOpened:
-            self.__rpcsvc.CloseServiceHandle(self.__serviceManager)
-            self.__log__(LEVEL_INFODBG, 'Service Manager closed')
-
-        # Deletes working directory if empty
-        if self.__directoryCreated:
-            try:
-                self.__connection.deleteDirectory(self.__writableShare, self.activeDirName)
-            except smbconnection.SessionError, e:
-                if e.getErrorCode()!=nt_errors.STATUS_DIRECTORY_NOT_EMPTY:
-                    raise
-                else:
-                    self.__log__(LEVEL_WARNING, 'Directory was not empty therefore not deleted')
-            else:
-                self.__log__(LEVEL_INFODBG, 'Directory deleted')
-
-        # disonnect from share
-        if self.__treeConnected:
-            self.__connection.disconnectTree(self.__writableShareId)
-            self.__log__(LEVEL_INFODBG, 'Tree disconnected')
-
-        # Log off
-        if self.__loggedIn:
-            self.__connection.logoff()
-            self.__log__(LEVEL_INFODBG, 'Logged off')
-
-        # Manually close socket
-        if self.__connection is not None:
-            s = self.__connection.getSMBServer().get_socket()
-            s.shutdown(2)
-            s.close()
-
-    ######
-    #
-    #   Return the local path corresponding to the UNC path \\remote\w-share\dirname
-    #
-    def getWritablePath(self):
-        serverName = self.__connection.getServerName()
-        if serverName == '':
-            serverName = '127.0.0.1'
-
-        return '\\\\%s\\%s\\%s' % (serverName, self.__writableShare, self.activeDirName)
-
-    ######
-    #
-    #   Opens the service manager
-    #   Returns handle to SvcMgr
-    #
-    def __openServiceManager(self):
-        self.__rpctransport = transport.SMBTransport('','',filename = r'\svcctl', smb_connection = self.__connection)
-        self.__dce = dcerpc.DCERPC_v5(self.__rpctransport)
-        self.__dce.connect()
-        self.__dce.bind(svcctl.MSRPC_UUID_SVCCTL)
-        self.__rpcsvc = svcctl.DCERPCSvcCtl(self.__dce)
-        try:
-            resp = self.__rpcsvc.OpenSCManagerW()
-            return resp['ContextHandle']
-        except Exception, e:
-            self.__log__(LEVEL_CRITICAL,'Cannot open Service Manager',e)
-            self.__exit(True)
-
-
-    ######
-    #
-    #   Uses the SvcMgr to create the service
-    #   ServiceName is the short name
-    #   ServiceDesc is display name
-    #   path is the location of the service binary (UNC allowed)
-    #
-    def __createService(self, serviceName, serviceDesc, path):
-
-        path = '%s\\%s' % (self.getWritablePath(), path)
-
-        try:
-            # try to open service
-            svcCheck = self.__rpcsvc.OpenServiceW(self.__serviceManager, serviceName.encode('utf-16le'))
-        except svcctl.SVCCTLSessionError,e:
-            if e.get_error_code()!= svcctl.ERROR_SERVICE_DOES_NOT_EXISTS:
-                # Error furing the check
-                self.__log__(LEVEL_CRITICAL, 'Cannot check for service '+serviceName, e)
-                self.__exit(True)
-                return
-        else:
-            # Service is already open, remove it
-            try:
-                self.__rpcsvc.StopService(svcCheck['ContextHandle'])
-            except svcctl.SVCCTLSessionError, e:
-                # Oops, it was not running
-                if e.get_error_code()!=svcctl.ERROR_SERVICE_NOT_ACTIVE:
-                    # Or maybe yes, and we have another error
-                    raise
-
-            # Delete it and close its handle
-            self.__rpcsvc.DeleteService(svcCheck['ContextHandle'])
-            self.__rpcsvc.CloseServiceHandle(svcCheck['ContextHandle'])
-
-        try:
-            # We are sure that the service does not exist
-            # we try to create it
-            self.__service = self.__rpcsvc.CreateServiceW(self.__serviceManager,
-                                                          serviceName.encode('utf-16le'),
-                                                          serviceDesc.encode('utf-16le'),
-                                                          path.encode('utf-16le'))
-        except svcctl.SVCCTLSessionError,e:
-            # bad for us...
-            self.__log__(LEVEL_CRITICAL, 'Unable to create service '+RemoteCmd.REMCOMSVC_SERVICE_NAME, e)
-            self.__exit(True)
-
-
-
-    ######
-    #
-    #   Starts the service
-    #
-    def __startService(self):
-        try:
-            self.__rpcsvc.StartServiceW(self.__service['ContextHandle'])
-        except svcctl.SVCCTLSessionError,e:
-            self.__log__(LEVEL_CRITICAL, 'Unable to start service '+RemoteCmd.REMCOMSVC_SERVICE_NAME, e)
-            self.__exit(True)
-
-
-
-    ######
-    #
-    #   Pipe utilities
-    #   returns handle to pipe
-    #
-    def __openPipe(self, tid, pipe, accessMask):
-        pipeReady = False
-        tries = 50
-
-        # Tries repeatedly to open pipe
-        while pipeReady is False and tries > 0:
-            try:
-                self.__connection.waitNamedPipe(tid,pipe)
-                pipeReady = True
-            except Exception,e:
-                print e
-                tries -= 1
-                time.sleep(1)
-                pass
-
-        if tries == 0:
-            self.__log__(LEVEL_CRITICAL, 'Unable to create named pipe')
-            self.__exit(True)
-            return
-
-        return self.__connection.openFile(tid, pipe, accessMask, creationOption = 0x40, fileAttributes = 0x80)
-
-
-    ######
-    #
-    #   Main function : executes command remotely
-    #   command is what is to be launched via "cmd /C command"
-    #   path is the working directory in which the command will be executed (UNC *not* allowed)
-    #
-    #   Returns stdout of the command
-    #
-    def execCommand(self, command, path = None):
-
-        # Connect to the IPC tree and open RemComSvc exchange pipe
-        tid = self.__connection.connectTree('IPC$')
-        fid = self.__openPipe(tid, '\RemCom_communicaton', 0x12019f)
-
-        # Build packet
-        packet = RemComMessage()
-        pid = os.getpid()
-
-        c = 'ABCDEFGHIJKLMNOPRSTUVWXYZabcdefghijklmnoprsqtuvwxyz';
-        command = 'cmd.exe /C '+command
-
-        packet['Machine'] = ''.join([random.choice(c) for i in range(4)])
-        packet['WorkingDir'] = path if path is not None else '\\'
-        packet['Priority'] = self.__commandPriority
-        packet['Command'] = command.encode('utf-8')
-        packet['ProcessID'] = pid
-
-        # Send it along with the command
-        self.__log__(LEVEL_INFODBG, 'Executing command: "'+command+'" with priority '+str(self.__commandPriority))
-        self.__connection.writeNamedPipe(tid, fid, str(packet))
-
-        # Opens the STD pipes
-        cred = self.__connection.getCredentials()
-        rh = self.__connection.getRemoteHost()
-        port = 445
-
-        try:
-            stdin_pipe  = pipes.RemoteStdInPipe(rh, port, cred,'\%s%s%d' % ('RemCom_stdin' ,packet['Machine'],packet['ProcessID']), FILE_WRITE_DATA | FILE_APPEND_DATA, self.__writableShare )
-            stdin_pipe.start()
-            stdout_pipe = pipes.RemoteStdOutPipe(rh, port, cred,'\%s%s%d' % ('RemCom_stdout',packet['Machine'],packet['ProcessID']), FILE_READ_DATA )
-            stdout_pipe.start()
-            stderr_pipe = pipes.RemoteStdErrPipe(rh, port, cred,'\%s%s%d' % ('RemCom_stderr',packet['Machine'],packet['ProcessID']), FILE_READ_DATA )
-            stderr_pipe.start()
-        except Exception, e:
-            self.__log__(LEVEL_CRITICAL, 'Error while creating the pipes', e)
-
-        # Should be hanging till the command is completed
-        ans = self.__connection.readNamedPipe(tid,fid,8)
-
-        # get stdout
-        ret = stdout_pipe.out
-
-        # Close the pipes
-        stdin_pipe.stop()
-        stdout_pipe.stop()
-        stderr_pipe.stop()
-
-        # Yeah, it can happen, dunno why.
-        if ret[:2] == '\x0d\x0a':
-            ret = ret[2:]
-
-        # Most commands return an additional line. See if keeping it is useful
-        return ret[:-2]
-
-
-    ######
-    #
-    #   Finds a writable share among the available shares present
-    #   on the remote server.
-    #
+    
+    # List shares, try to create directory in them
     def __findWritableShare(self):
-
-        # get all shares
-        allShares = self.__connection.listShares()
-        dirName = PROGRAM_NAME + '-write-test'
+        self.__log__(logging.DEBUG, 'Searching for writable share')
+        shares = self.__smbconnection.listShares()
+        dirname = getRandomName() + '-write-test'
+        
         tries = []
-
-        for share in allShares:
-
-            # Filter by share type
-            if share['shi1_type'] in [smbconnection.smb.SHARED_DISK, smbconnection.smb.SHARED_DISK_HIDDEN]:
+        for share in shares:
+            if share['shi1_type'] in [smb.SHARED_DISK, smb.SHARED_DISK_HIDDEN]:
                 shareName = share['shi1_netname'][:-1]
                 shareOK = True
 
                 try:
                     # try to create directory
-                    self.__connection.createDirectory(shareName, dirName)
-                except smbconnection.SessionError, e:
+                    self.__smbconnection.createDirectory(shareName, dirname)
+                except SessionError, e:
                     tries.append(shareName)
                     # if error, depends on whether the test directory existed or not
                     shareOK = True if e.getErrorCode == nt_errors.STATUS_OBJECT_NAME_COLLISION else False
 
                 if shareOK:
                     # We found a share, delete our test
-                    self.__connection.deleteDirectory(shareName, dirName)
-                    return shareName
-
-        raise WritableShareException('No writable share found among ['+(', '.join(tries))+']')
-
-
-    ######
-    #
-    #   Returns handle to remotely opened file
-    #
-    def __openFile(self, filename, mode = FILE_READ_DATA, useWd=True):
-
-        filename = self.activeDirName+'\\'+filename if useWd else filename
-
-        try:
-            # try to get handle of existing file
-            fid = self.__connection.openFile(self.__writableShareId, filename, mode)
-            return fid
-        except smbconnection.SessionError, e:
-            # File did not exist
-            if e.getErrorCode() != nt_errors.STATUS_OBJECT_NAME_NOT_FOUND:
-                self.__log__(LEVEL_CRITICAL, 'Cannot open file '+filename+': ',e)
-                self.__exit(True)
-                return
-
-        try:
-            # then create it !
-            fid = self.__connection.createFile(self.__writableShareId, filename)
-            return fid
-        except smbconnection.SessionError, e:
-            # or not ...
-            self.__log__(LEVEL_CRITICAL, 'Cannot create file '+filename+': ',e)
-            self.__exit(True)
-
-
-    ######
-    #
-    #   Closes a file according to its FID
-    #
-    def __closeFile(self, fid):
-
-        try:
-            self.__connection.closeFile(self.__writableShareId, fid)
-        except smbconnection.SessionError, e:
-            self.__log__(LEVEL_CRITICAL, 'Cannot close file '+fid+': ',e)
-            self.__exit(True)
-
-
-    ######
-    #
-    #   Returns true if file exists within the working directory (if useWD)
-    #   or in the share
-    #
-    def fileExists(self, filename, useWd=True):
-
-        filename = self.activeDirName+'\\'+filename if useWd else filename
-
-        try:
-            # try to open file
-            fid = self.__connection.openFile(self.__writableShareId, filename, FILE_READ_DATA)
-            self.__connection.closeFile(self.__writableShareId, fid)
-            return True
-        except smbconnection.SessionError, e:
-            # does not work
-            if e.getErrorCode() != nt_errors.STATUS_OBJECT_NAME_NOT_FOUND:
-                # because of unknown error
-                self.__log__(LEVEL_CRITICAL, 'Cannot stat file '+filename+': ',e)
-                self.__exit(True)
-            else:
-                # because file existed
-                return False
-
-    ######
-    #
-    #   Reads the entire file located at <filename>
-    #
-    def readFile(self, filename,useWd=True):
-
-        if not self.fileExists(filename, useWd):
-            self.__log__(LEVEL_ERROR, 'File '+filename+' does not exist')
-            return None
-
-        fid = self.__openFile(filename, useWd)
-        offset = 0
-        ret = ""    # buffer
-
-        try:
-            while True:
-                # read bytes
-                data = self.__connection.readFile(self.__writableShareId, fid, offset)
-                l = len(data)
-
-                if l==0:
-                    # EOF
-                    self.__closeFile(fid)
-                    return ret
-                else:
-                    # append
-                    ret += data
-                    offset += l
-
-        except smbconnection.SessionError, e:
-            # Special case for the EOF:
-            # STATUS_END_OF_FILE error code = 0xC0000011 = 3221225489
-            if (e.getErrorCode() == 3221225489):
-                self.__closeFile(fid)
-                return ret
-
-            self.__log__(LEVEL_CRITICAL, 'Cannot read '+filename+': ', e)
-            self.__exit(True)
-
-
-    ######
-    #
-    #   Writes <data> to <filename>
-    #   Erases original file if exists
-    #
-    def writeFile(self, filename, data, initOffset = 0, useWd=True):
-
-        fid = self.__openFile(filename, FILE_WRITE_DATA, useWd)
-        offset = initOffset
-        bytesWritten = 0
-
-        try:
-            while len(data) != 0:
-                # write bytes
-                bytesWritten = self.__connection.writeFile(self.__writableShareId, fid, data, offset)
-
-                if bytesWritten is None:
-                    bytesWritten = len(data)
-
-                offset += bytesWritten
-                data = data[bytesWritten:]
-
-            # EOF
-            self.__closeFile(fid)
-            return bytesWritten
-        except smbconnection.SessionError, e:
-            self.__log__(LEVEL_CRITICAL, 'Cannot write in '+filename+': ',e)
-            self.__exit(True)
-
-
-    ######
-    #
-    #   Deletes remote file
-    #   Throws errorLevel in case of error
-    def deleteFile(self, filename, errorLevel = LEVEL_CRITICAL, useWd=True):
-
-        self.__log__(LEVEL_INFODBG, 'Deleting file ' + filename)
-        filename = self.activeDirName+'\\'+filename if useWd else filename
-
-        retrycount=0
-        while retrycount!=5:
-            try:
-                self.__connection.deleteFile(self.__writableShare, filename)
-                return
-                
-            except smbconnection.SessionError, e:
-                self.__log__(errorLevel, 'Cannot delete '+filename+': ',e)
-                retrycount += 1
-                time.sleep(retrycount)
+                    self.__smbconnection.deleteDirectory(shareName, dirname)
+                    self.__log__(logging.DEBUG, 'Using share "%s"' % shareName)
+                    self.__writableShare = shareName
+                    return
+                    
+        raise Exception('Could not find writable share among [%s]' % (','.join(tries)))
+   
+   
+    # Process to working directory on remote wks
+    def __createWorkingDirectory(self):
+        self.__log__(logging.DEBUG, 'Creating working directory')
         
-        if errorLevel == LEVEL_CRITICAL:
-            self.__exit(True)
-
-
-    ######
-    #
-    #   Drops file <localFile> to <remoteName> in
-    #   remote share.
-    #
-    def dropFile(self, localFile, remoteName, useWd=True, useLocalRef=True):
+        try:
+            dirname = '%s-local' % PROGRAM_NAME
+            self.__smbconnection.createDirectory(self.__writableShare, dirname)
+            self.__workingDirectory = dirname
+            self.__pendingCleanupActions.append((self.__deleteWorkingDirectory, 3))
+            
+        except SessionError, e:
+            if e.getErrorCode()!=nt_errors.STATUS_OBJECT_NAME_COLLISION:
+                raise e
+            
+            else:
+                self.__workingDirectory = dirname
+                self.__pendingCleanupActions.append((self.__deleteWorkingDirectory, 3))
+                self.__log__(logging.WARNING, 'Directory "%s" is already present' % dirname)
+                                
+        return
+          
+          
+    # Installs the service
+    def __openSVCManager(self):
+        self.__log__(logging.DEBUG, 'Opening service manager')
+        
+        self.__dcerpc.bind(scmr.MSRPC_UUID_SCMR)
+        resp = scmr.hROpenSCManagerW(self.__dcerpc)
+        self.__pendingCleanupActions.append((self.__closeSVCManager, 3))
+        self.__SVCManager = resp['lpScHandle']
+        return
+    
+    # Creates the service
+    def __createService(self):
+        self.__log__(logging.DEBUG, 'Creating service')
 
         try:
-            self.__log__(LEVEL_INFODBG, 'Dropping file ' + remoteName)
-            lpath = os.path.join(self.rootDir,localFile) if useLocalRef else localFile
-            content = open(lpath , 'rb').read()
-            self.writeFile(remoteName, content, 0, useWd)
-            self.__log__(LEVEL_INFODBG, 'Dropped file ' + remoteName)
-        except IOError:
-            self.__log__(LEVEL_CRITICAL, 'File '+lpath+' was not found')
-            self.__exit(True)
+            resp = scmr.hROpenServiceW(self.__dcerpc, self.__SVCManager, RemoteCmd.REMCOMSVC_SERVICE_NAME + '\x00')
+            self.__log__(logging.WARNING, 'Service already exists, renewing it')
+            
+            try:
+                scmr.hRControlService(self.__dcerpc, resp['lpServiceHandle'], scmr.SERVICE_CONTROL_STOP)
+                time.sleep(1)
+            except: 
+                pass
+                
+            scmr.hRDeleteService(self.__dcerpc, resp['lpServiceHandle'])
+            scmr.hRCloseServiceHandle(self.__dcerpc, resp['lpServiceHandle'])
+            
+        except:
+            pass
+                
+        resp = scmr.hRCreateServiceW(
+                self.__dcerpc, 
+                self.__SVCManager, 
+                RemoteCmd.REMCOMSVC_SERVICE_NAME + '\x00',
+                RemoteCmd.REMCOMSVC_SERVICE_NAME + '\x00',
+                lpBinaryPathName = self.__getWritableUNCPath() + '\\' + RemoteCmd.REMCOMSVC_REMOTE + '\x00',
+                dwStartType=scmr.SERVICE_DEMAND_START,
+        )
+        
+        resp = scmr.hROpenServiceW(self.__dcerpc, self.__SVCManager, RemoteCmd.REMCOMSVC_SERVICE_NAME + '\x00')
+        self.__service = resp['lpServiceHandle']
+                
+        self.__pendingCleanupActions.append((self.__deleteService, 3))
+        return
+    
+    
+    # Drops the binary file to register as a service
+    def __dropBinary(self):
+        self.__log__(logging.DEBUG, 'Dropping binary file')
+        
+        localBinary = open( os.path.join(self.__rootDir, RemoteCmd.REMCOMSVC_LOCAL), 'rb')
+        remoteBinary = '%s\\%s' % (self.__workingDirectory, RemoteCmd.REMCOMSVC_REMOTE)
+        self.__smbconnection.putFile(self.__writableShare, remoteBinary, localBinary.read)
+        self.__pendingCleanupActions.append((self.__deleteBinary, 3))
+        return 
 
-    ######
-    #
-    #   Gets file <remoteName> to <localFile> from
-    #   remote share.
-    #
-    def getFile(self, remoteName, localFile, useWd=True):
-
-        try:
-            lpath = os.path.join(self.rootDir,localFile)
-            f = open(lpath, 'wb')
-            content = self.readFile(remoteName, useWd)
-            f.write(content)
-            self.__log__(LEVEL_INFODBG, 'Retrieved file ' + remoteName)
-        except IOError:
-            self.__log__(LEVEL_CRITICAL, 'File '+lpath+' could not be created')
-            self.__exit(True)
-
-
+    
+    # Starts the service
+    def __startService(self):
+        self.__log__(logging.DEBUG, 'Starting service')
+    
+        scmr.hRStartServiceW(self.__dcerpc, self.__service)    
+        self.__pendingCleanupActions.append((self.__stopService, 3))
+        return
+       
+       
     '''
         By default, remote share is targeted by UNC path \\REMOTE\SHARE-NAME$\
         CMD.EXE /C commands can be specified a working directory but UNC Path do not work
         Trick is to allocate a network drive LETTER: to \\REMOTE\SHARE-NAME$\ and to use LETTER:\ as CWD
     '''
-    ######
-    #
-    #   Search for unallocated network drive
-    #
-    def setNet(self):
+    # Search and set unallocated network drive
+    def __setNet(self):
 
         for letter in [chr(i) for i in range(ord('A'), ord('Z')+1)]:
-            out = self.execCommand('net use %s: %s 2>&1' % (letter, self.getWritablePath()))
+            out = self.execute('net use * /delete /y 2>&1')
+            out = self.execute('net use %s: %s 2>&1' % (letter, self.__getWritableUNCPath()))
             if out.find('85')==-1:
-                self.__log__(LEVEL_INFODBG, 'Using network drive %s:' % letter)
-                self.__netLetter = letter
+                self.__log__(logging.DEBUG, 'Using network drive %s:' % letter)
+                self.drive = letter
+                self.__pendingCleanupActions.append((self.__unsetNet, 3))
                 return letter+':'
 
-        self.__log__(LEVEL_CRITICAL, 'Cannot find suitable network drive')
-        self.__exit(True)
+        raise DriveError('Cannot find suitable network drive')
+       
+     
+    # CLEANUP function
+    def cleanup(self):
+        while len(self.__pendingCleanupActions)>0:
+            action, count = self.__pendingCleanupActions.pop()
+            
+            c=1
+            while c<=count:
+                try:
+                    action()
+                    break
+                    
+                except Exception, e:
+                    self.__log__(logging.ERROR, 'error in %s, sleep %ds' % (action.__name__, c), e)
+                    c += 1
+                    time.sleep(c)
+                    
+            if count==0:
+                raise CleanupError('Fatal error during cleanup - could not recover')
 
-    ######
-    #
-    #   Deallocated network drive
-    #
-    def unsetNet(self):
-        out = self.execCommand('net use %s: /Delete' % self.__netLetter)
-        self.__log__(LEVEL_INFODBG, 'Net unuse: '+out[:-2])
+                
+    # Deletes allocated drive
+    def __unsetNet(self):
+        time.sleep(1)
+        out = self.execute('net use %s: /DELETE /y' % self.drive)
+        self.__log__(logging.DEBUG, 'Net unuse: %s' % out[:-2])
+        
+    
+    # Stops the service
+    def __stopService(self):
+        self.__log__(logging.DEBUG, 'Stopping service')
+    
+        scmr.hRControlService(self.__dcerpc, self.__service, scmr.SERVICE_CONTROL_STOP)    
+        time.sleep(1)
+        return
+                
+        
+    # Deletes binary
+    def __deleteBinary(self):
+        self.__log__(logging.DEBUG, 'Deleting binary file')
+        
+        remoteBinary = '%s\\%s' % (self.__workingDirectory, RemoteCmd.REMCOMSVC_REMOTE)
+        self.__smbconnection.deleteFile(self.__writableShare, remoteBinary)
+        return 
+       
+     
+    # Deletes the service
+    def __deleteService(self):
+        self.__log__(logging.DEBUG, 'Deleting service')
+        
+        scmr.hRDeleteService(self.__dcerpc, self.__service)
+        scmr.hRCloseServiceHandle(self.__dcerpc, self.__service)
+        self.__service = None
+        return 
+        
+        
+    # Uninstalls the service
+    def __closeSVCManager(self):
+        self.__log__(logging.DEBUG, 'Closing service manager')
+        
+        scmr.hRCloseServiceHandle(self.__dcerpc, self.__SVCManager)
+        self.__SVCManager = None
+        return
 
+        
+    # Deletes working directory
+    def __deleteWorkingDirectory(self):
+        self.__log__(logging.DEBUG, 'Deleting working directory')
+        
+        self.__smbconnection.deleteDirectory(self.__writableShare, self.__workingDirectory)
+        self.__workingDirectory = None
+        return 
+
+    # END CLEANUP
+        
+        
+    # Returns the local path corresponding to the UNC path \\remote\w-share\dirname
+    def __getWritableUNCPath(self):
+        serverName = self.__smbconnection.getServerName()
+        if serverName == '':
+            serverName = '127.0.0.1'
+
+        return '\\\\%s\\%s\\%s' % (serverName, self.__writableShare, self.__workingDirectory)
+        
+        
+    # Handles named pipes
+    def __openNamedPipe(self, tid, pipe, accessMask):
+        pipeReady = False
+        tries = 50
+
+        # Tries repeatedly to open pipe
+        while pipeReady is False and tries > 0:
+            try:
+                self.__smbconnection.waitNamedPipe(tid,pipe)
+                pipeReady = True
+            except Exception,e:
+                #self.__log__(logging.WARNING, 'Error opening pipe "%s"' % pipe, e)
+                tries -= 1
+                time.sleep(1)
+                
+
+        if tries == 0:
+            raise CommandError('Could not create named pipe')
+
+        return self.__smbconnection.openFile(tid, pipe, accessMask, creationOption = 0x40, fileAttributes = 0x80)  
+        
+    
+    # Executes command on remote system
+    def execute(self, command, useDrive=False):
+
+        try:
+            assert (self.__service is not None)
+            
+            # Connect to the IPC tree and open RemComSvc exchange pipe
+            tid = self.__smbconnection.connectTree('IPC$')
+            fid = self.__openNamedPipe(tid, '\RemCom_communicaton', 0x12019f)
+
+            # Build packet
+            packet = RemComMessage()
+            pid = os.getpid()
+
+            c = 'ABCDEFGHIJKLMNOPRSTUVWXYZabcdefghijklmnoprsqtuvwxyz';
+            command = 'cmd.exe /C '+command
+
+            packet['Machine'] = ''.join([random.choice(c) for i in range(4)])
+            packet['WorkingDir'] = '%s:\\' % self.drive if useDrive else '\\'
+            packet['Priority'] = PRIORITY_NORMAL
+            packet['Command'] = command.encode('utf-8')
+            packet['ProcessID'] = pid
+
+            # Send it along with the command
+            self.__log__(logging.DEBUG, 'Executing command: "'+command+'" with priority '+str(PRIORITY_NORMAL))
+            self.__smbconnection.writeNamedPipe(tid, fid, str(packet))
+
+            # Opens the STD pipes
+            cred = self.__smbconnection.getCredentials()
+            host = self.__smbconnection.getRemoteHost()
+            port = 445
+
+            stdin_pipe  = pipes.RemoteStdInPipe(host, port, cred,'\%s%s%d' % ('RemCom_stdin' ,packet['Machine'],packet['ProcessID']), FILE_WRITE_DATA | FILE_APPEND_DATA, self.__writableShare )
+            stdin_pipe.start()
+            stdout_pipe = pipes.RemoteStdOutPipe(host, port, cred,'\%s%s%d' % ('RemCom_stdout',packet['Machine'],packet['ProcessID']), FILE_READ_DATA )
+            stdout_pipe.start()
+            stderr_pipe = pipes.RemoteStdErrPipe(host, port, cred,'\%s%s%d' % ('RemCom_stderr',packet['Machine'],packet['ProcessID']), FILE_READ_DATA )
+            stderr_pipe.start()
+            
+            # Should be hanging till the command is completed
+            ans = self.__smbconnection.readNamedPipe(tid,fid,8)
+
+            # get stdout
+            ret = stdout_pipe.out
+
+            # Close the pipes
+            stdin_pipe.stop()
+            stdout_pipe.stop()
+            stderr_pipe.stop()
+
+            # Yeah, it can happen, dunno why.
+            if ret[:2] == '\x0d\x0a':
+                ret = ret[2:]
+
+            # Most commands return an additional line. See if keeping it is useful
+            return ret[:-2]
+            
+        except Exception, e:
+            self.__log__(logging.ERROR, 'Error during command execution', e)
+
+            
+    # File operations
+    def dropFile(self, localName, remoteName, useRootDir = True):
+        try:
+            self.__log__(logging.DEBUG, 'Dropping file ' + remoteName)
+            lpath = os.path.join(self.rootDir, localName) if useRootDir else localName
+            remoteName = '%s\\%s' % (self.__workingDirectory, remoteName)
+            self.__smbconnection.putFile(self.__writableShare, remoteName, open(lpath , 'rb').read)
+            self.__log__(logging.DEBUG, 'Dropped file ' + remoteName)
+            
+        except Exception, e:
+            self.__log__(logging.ERROR, 'Error during file drop', e)
+            raise FileError()
+            
+    
+    def getFile(self, remoteName, localName, useRootDir = True):
+
+        try:
+            self.__log__(logging.DEBUG, 'Retrieving file ' + remoteName)
+            lpath = os.path.join(self.rootDir, localName) if useRootDir else localName
+            remoteName = '%s\\%s' % (self.__workingDirectory, remoteName)
+            self.__smbconnection.getFile(self.__writableShare, remoteName, open(lpath , 'wb').write)
+            self.__log__(logging.DEBUG, 'Retrieved file ' + remoteName)
+        
+        except Exception, e:
+            self.__log__(logging.ERROR, 'Error during file retrieval', e)
+            raise FileError()
+            
+    
+    def deleteFile(self, remoteName):
+            
+        try:
+            self.__log__(logging.DEBUG, 'Deleting file ' + remoteName)
+            remoteName = '%s\\%s' % (self.__workingDirectory, remoteName)
+            self.__smbconnection.deleteFile(self.__writableShare, remoteName)
+            self.__log__(logging.DEBUG, 'Deleted file ' + remoteName)
+        
+        except Exception, e:
+            self.__log__(logging.ERROR, 'Error during file deletion', e)
+            raise FileError()
+      
+
+    def fileExists(self, remoteName):
+    
+        try:
+            self.__log__(logging.DEBUG, 'Trying to access ' + remoteName)
+            tid = self.__smbconnection.connectTree(self.__writableShare)
+            remoteName = '%s\\%s' % (self.__workingDirectory, remoteName)
+            fid = self.__smbconnection.openFile(tid, remoteName, desiredAccess=FILE_READ_DATA)
+            self.__log__(logging.DEBUG, 'File exists: ' + remoteName)
+            self.__smbconnection.closeFile(tid, fid)
+            return False
+        
+        except SessionError, e:
+            if e.getErrorCode() == nt_errors.STATUS_OBJECT_NAME_NOT_FOUND:
+                self.__log__(logging.DEBUG, 'File does not exist: ' + remoteName)
+                return False
+                
+            self.__log__(logging.ERROR, 'Error during file access', e)
+            raise FileError()
+                
+        except Exception, e:
+            self.__log__(logging.ERROR, 'Error during file access', e)
+            raise FileError()
+      
+      
+# MAIN
 if __name__ == '__main__':
-    RemoteCmd.setDebugLevel(logging.INFO)
+
+    # Logging
+    console = logging.StreamHandler()
+    console.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(name)-20s : %(levelname)-8s %(message)s')
+    console.setFormatter(formatter)
+    logging.getLogger('').addHandler(console)
+        
+    r = RemoteCmd('toto', '127.0.0.1', raw_input('Login: '), getpass.getpass('Password: '), verbosity=logging.DEBUG, domain='DOMAIN')
+
+    r.setup()
+    r.fileExists('RemComSvc.exe')
+    r.fileExists('toto.exe')
+    r.cleanup()

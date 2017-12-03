@@ -1,5 +1,5 @@
 from threading import Thread, Lock
-from smbconnection import *
+from impacket.smbconnection import *
 import cmd
 
 lock = Lock()

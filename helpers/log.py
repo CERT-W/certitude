@@ -26,7 +26,7 @@
 import logging
 from os import path
 
-from config import DEBUG, CONSOLE_VERBOSE, DOSSIER_LOG, FORMAT_LOGS
+from config import DEBUG, CONSOLE_DEBUG_LEVEL, LOG_DIRECTORY, FORMAT_LOGS
 
 
 def init():
@@ -36,7 +36,7 @@ def init():
         chemin = "" # relatif
 
 
-    logging.basicConfig(filename=path.join(chemin, '..', DOSSIER_LOG, 'certitude-core.log'), format=FORMAT_LOGS, filemode='a')
+    logging.basicConfig(filename=path.join(chemin, '..', LOG_DIRECTORY, 'certitude-core.log'), format=FORMAT_LOGS, filemode='a')
     formatter = logging.Formatter(FORMAT_LOGS)
 
     if DEBUG:
@@ -44,35 +44,35 @@ def init():
     else:
         logging.getLogger('').setLevel(logging.INFO)
 
-    # Base de données (SQLAlchemy)
+    # Database
     loggingdb = logging.getLogger('sqlalchemy.engine')
     loggingdb.setLevel(logging.WARNING)
-    handler_logdb = logging.FileHandler(path.join(chemin, '..', DOSSIER_LOG, 'db.log'))
+    handler_logdb = logging.FileHandler(path.join(chemin, '..', LOG_DIRECTORY, 'db.log'))
     handler_logdb.setFormatter(formatter)
     loggingdb.addHandler(handler_logdb)
 
-    # Serveur de l'API
+    # API Server
     loggingserver = logging.getLogger('api')
-    handler_logapi = logging.FileHandler(path.join(chemin, '..', DOSSIER_LOG, 'api.log'))
+    handler_logapi = logging.FileHandler(path.join(chemin, '..', LOG_DIRECTORY, 'api.log'))
     handler_logapi.setFormatter(formatter)
     loggingserver.addHandler(handler_logapi)
 
     # IOCScanners
     loggingiocscan = logging.getLogger('iocscanner')
-    handler_logiocscan = logging.FileHandler(path.join(chemin, '..', DOSSIER_LOG, 'iocscanners.log'))
+    handler_logiocscan = logging.FileHandler(path.join(chemin, '..', LOG_DIRECTORY, 'iocscanners.log'))
     handler_logiocscan.setFormatter(formatter)
     loggingiocscan.addHandler(handler_logiocscan)
     
-     # IOCScanners
+     # Hashscanners
     logginghashscan = logging.getLogger('hashscanner')
-    handler_loghashscan = logging.FileHandler(path.join(chemin, '..', DOSSIER_LOG, 'hashscanners.log'))
+    handler_loghashscan = logging.FileHandler(path.join(chemin, '..', LOG_DIRECTORY, 'hashscanners.log'))
     handler_loghashscan.setFormatter(formatter)
     logginghashscan.addHandler(handler_loghashscan)
     
-    # Double sortie vers la console aussi
+    # Console output
     # define a Handler which writes INFO messages or higher to the sys.stderr
     console = logging.StreamHandler()
-    console.setLevel(CONSOLE_VERBOSE)
+    console.setLevel(CONSOLE_DEBUG_LEVEL)
     # set a format which is simpler for console use
     formatter = logging.Formatter('%(name)-20s : %(levelname)-8s %(message)s')
     # tell the handler to use this format

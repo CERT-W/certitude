@@ -66,10 +66,10 @@ def main():
 			web.run_server()
 		elif args.component == ['iocscan']:
 			from components.scanner import iocscan_queue
-			iocscan_queue.demarrer_scanner(batch = args.batch_name)
+			iocscan_queue.startScanner(batch = args.batch_name)
 		elif args.component == ['hashscan']:
 			from components.scanner import hashscan_queue
-			hashscan_queue.demarrer_scanner(batch = args.batch_name)
+			hashscan_queue.startScanner(batch = args.batch_name)
 		else:
 			print 'Error: specify the component to run'
 			print parser.print_help()

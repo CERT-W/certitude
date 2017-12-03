@@ -24,7 +24,7 @@
 '''
 
 if __name__ == "__main__" and __package__ is None:
-    raise Exception('Erreur: lancez le script depuis main.py et non directement')
+    raise Exception('Error: you have to launch this script from main.py')
 
 
 # SYS MODULES
@@ -48,12 +48,12 @@ import traceback
 import uuid
 
 # USER MODULES
-from config import DOSSIER_LOG, BASE_DE_DONNEES_QUEUE, SLEEP, SECONDES_ENTRE_TENTATIVES
+from config import CERTITUDE_DATABASE, SLEEP, MIN_RESCAN_INTERVAL
 from config import IOC_MODE, IOC_KEEPFILES
 from config import IOC_CONFIDENTIAL_DIRECTORY, IOC_COMPONENT_ROOT, IOC_TEMP_DIR
 import helpers.crypto as crypto
 from helpers.helpers import hashPassword, checksum, threadname
-import helpers.hashscan_modules as hash_modules
+import helpers.hashscan_modules as scan_modules
 from helpers.misc_models import ConfigurationProfile, WindowsCredential, XMLIOC, Batch, GlobalConfig, User
 from helpers.queue_models import Task
 from helpers.results_models import Result, IOCDetection
@@ -62,12 +62,10 @@ import openioc.ioc as ioc
 import remotecmd
 import shutil
 
-logginghashscan = logging.getLogger('hashcanner.' + threadname)
+loggingscan = logging.getLogger('hashscanner.' + threadname)
 
-engine = create_engine(BASE_DE_DONNEES_QUEUE, echo=False)
+engine = create_engine(CERTITUDE_DATABASE, echo=False)
 session = sessionmaker(bind=engine)()
-
-DR_PLUS_DIR = 'DR_PLUS'
 
 # File droplist
 
@@ -97,8 +95,8 @@ EndCommandList = [
     ['rmtar.bat import_sql.tar',0],
 ]
 
-def ioc_dict_from_trees(ioc_trees):
-    ioc_dictionary = {}
+def iocDict_from_trees(ioc_trees):
+    iocDictionary = {}
 
     for ioc_id, ioc_object in ioc_trees.items():
         leaves = ioc_object['tree'].getLeaves()
@@ -106,164 +104,172 @@ def ioc_dict_from_trees(ioc_trees):
         # IOC Tree evaluation
         for uid, ioc in leaves.items():
             # Do we know how to search for that ?
-            if ioc.document in hash_modules.flatEvaluatorList.keys():
+            if ioc.document in scan_modules.flatEvaluatorList.keys():
                 # Getting the dictionary for that category, or creating it
-                if not ioc.document in ioc_dictionary.keys():
-                    ioc_dictionary[ioc.document] = []
+                if not ioc.document in iocDictionary.keys():
+                    iocDictionary[ioc.document] = []
 
                 ioc.db_ioc_id = ioc_id
-                ioc_dictionary[ioc.document].append(ioc)
+                iocDictionary[ioc.document].append(ioc)
 
-    return ioc_dictionary
+    return iocDictionary
 
 
 # Scans the target defined by taregtObject
 # IOCObjects represents the set of IOC trees to be searche on the workstation
 # HostConfidential is a boolean that triggers data retrieval or remote database querying
 #
-def scan(targetObject, IOCObjects, hostConfidential):
+def scanTarget(targetObject, IOCObjects, hostConfidential):
 
     HANDLER_NAME = '%s@%s' % (targetObject['login'], targetObject['ip'])
 
     # Init PsExec tunnel to target
     try:
-        RemCom = remotecmd.RemoteCmd(threadname,
+        remoteSystem = remotecmd.RemoteCmd(threadname,
                                         targetObject['ip'],
                                         targetObject['login'],
                                         targetObject['password'],
                                         domain = targetObject['domain'],
                                         rootDir = IOC_COMPONENT_ROOT
                                      )
-        logginghashscan.info('Handler %s has been succesfully created' % HANDLER_NAME)
+        loggingscan.info('Handler %s has been succesfully created' % HANDLER_NAME)
+        
+        remoteSystem.setup()
     # too bad, error in connection
     except Exception, e:
-        logginghashscan.error('Handler '+HANDLER_NAME+' could not be created: '+str(e).decode('cp1252'))
+        loggingscan.error(HANDLER_NAME+' startup error: '+str(e).encode(sys.stdout.encoding))
         return None
 
-    drive = RemCom.setNet()
-
-    # Drop files
-    for local, remote in dropList:
-
-        if RemCom.fileExists(remote):
-            RemCom.deleteFile(remote)
-        RemCom.dropFile(local, remote)
-
-    # Start commands
-    for command in StartCommandList:
-        RemCom.execCommand(command, drive)
-
-    # Confidential
-    hostConfidential_LOCALNAME = os.path.join(IOC_CONFIDENTIAL_DIRECTORY, HANDLER_NAME)
-    localFullname = os.path.join(IOC_COMPONENT_ROOT, hostConfidential_LOCALNAME)
-    if hostConfidential:
-        os.makedirs(os.path.join(IOC_COMPONENT_ROOT, hostConfidential_LOCALNAME))
-
-    # TMP query file
-    if not os.path.isdir(IOC_TEMP_DIR):
-        os.makedirs(IOC_TEMP_DIR)
-    TEMP_FILE = os.path.join(IOC_TEMP_DIR, '%s.tmp' % threadname)
-
-    # <analysis>
-
-    result = {}
-    raw_results = {}
-    initFilesPresent = []
-
-    if IOC_MODE == 'flat':
-
-        ioc_dict = ioc_dict_from_trees(IOCObjects)
-
-        for category, ioc_list in ioc_dict.items():
-            evlt = hash_modules.flatEvaluatorList[category](logginghashscan, None, RemCom, drive, IOC_KEEPFILES,
-                                                                hostConfidential, localFullname)
-
-            # Retrieves created file so we don't create them again (speed++)
-            newFiles = evlt.createInitFiles(initFilesPresent)
-            for newFile in newFiles:
-                initFilesPresent.append(newFile)
-
-                if hostConfidential:
-                    RemCom.getFile(newFile, os.path.join(hostConfidential_LOCALNAME, newFile))
-
-            category_result = evlt.eval(TEMP_FILE, ioc_list)
-            raw_results.update(category_result)
-
-            logginghashscan.info('Research for %s has ended' % category)
-
-        # Remove files if not explicitly told to keep them
-        # In the latter case, they are kept on the analyst computer, so erase them from the remote
-        if not IOC_KEEPFILES or hostConfidential:
-            for remoteFile in initFilesPresent:
-                RemCom.deleteFile(remoteFile)
-
-
-    else:#if IOC_MODE == 'logic':
-        raise NotImplementedError
-
-    # </analysis>
-
-    # TMP query file
-    if os.path.exists(TEMP_FILE):
-        os.unlink(TEMP_FILE)
-
-    # End commands
-    for command in EndCommandList:
-        if (not IOC_KEEPFILES or hostConfidential) or command[1]!=0:
-            RemCom.execCommand(command[0], drive)
-
-    if not IOC_KEEPFILES or hostConfidential:
+        
+    try:
+        # Drop files
         for local, remote in dropList:
-            RemCom.deleteFile(remote)
+            if remoteSystem.fileExists(remote):
+                remoteSystem.deleteFile(remote)
+            remoteSystem.dropFile(local, remote)
 
-    # If data has been retrieved, erase it if not instructed otherwise
-    if hostConfidential and not IOC_KEEPFILES:
-        logginghashscan.info('Wiping local data')
-        shutil.rmtree(os.path.join(IOC_COMPONENT_ROOT, hostConfidential_LOCALNAME))
+        # Start commands
+        for command in StartCommandList:
+            remoteSystem.execute(command, True)
 
-    RemCom.unsetNet()
-    RemCom.exit()
+        # Confidential
+        hostConfidentialLocalName = os.path.join(IOC_CONFIDENTIAL_DIRECTORY, HANDLER_NAME)
+        localFullname = os.path.join(IOC_COMPONENT_ROOT, hostConfidentialLocalName)
+        if hostConfidential:
+            os.makedirs(os.path.join(IOC_COMPONENT_ROOT, hostConfidentialLocalName))
 
-    logginghashscan.info('Handler %s has gracefully ended' % HANDLER_NAME)
+        # TMP query file
+        if not os.path.isdir(IOC_TEMP_DIR):
+            os.makedirs(IOC_TEMP_DIR)
+        TEMP_FILE = os.path.join(IOC_TEMP_DIR, '%s.tmp' % threadname)
 
-    return raw_results
+        # <analysis>
+
+        result = {}
+        rawResults = {}
+        initFilesPresent = []
+
+        if IOC_MODE == 'flat':
+
+            iocDict = iocDict_from_trees(IOCObjects)
+
+            for category, ioc_list in iocDict.items():
+                evlt = scan_modules.flatEvaluatorList[category](loggingscan, None, remoteSystem, IOC_KEEPFILES,
+                                                                    hostConfidential, localFullname)
+
+                # Retrieves created file so we don't create them again (speed++)
+                newFiles = evlt.createInitFiles(initFilesPresent)
+                for newFile in newFiles:
+                    initFilesPresent.append(newFile)
+
+                    if hostConfidential:
+                        remoteSystem.getFile(newFile, os.path.join(hostConfidentialLocalName, newFile))
+
+                categoryResults = evlt.eval(TEMP_FILE, ioc_list)
+                rawResults.update(categoryResults)
+
+                loggingscan.info('Research for %s has ended' % category)
+
+            # Remove files if not explicitly told to keep them
+            # In the latter case, they are kept on the analyst computer, so erase them from the remote
+            if not IOC_KEEPFILES or hostConfidential:
+                for remoteFile in initFilesPresent:
+                    remoteSystem.deleteFile(remoteFile)
+
+
+        else:#if IOC_MODE == 'logic':
+            raise NotImplementedError
+
+        # </analysis>
+    except Exception, e:
+        loggingscan.error(HANDLER_NAME+' scan error: '+str(e).encode(sys.stdout.encoding))
+        return None
+    
+        
+    try:
+        # TMP query file
+        if os.path.exists(TEMP_FILE):
+            os.unlink(TEMP_FILE)
+
+        # End commands
+        for command in EndCommandList:
+            if (not IOC_KEEPFILES or hostConfidential) or command[1]!=0:
+                remoteSystem.execute(command[0], True)
+
+        if not IOC_KEEPFILES or hostConfidential:
+            for local, remote in dropList:
+                remoteSystem.deleteFile(remote)
+
+        # If data has been retrieved, erase it if not instructed otherwise
+        if hostConfidential and not IOC_KEEPFILES:
+            loggingscan.info('Wiping local data')
+            shutil.rmtree(os.path.join(IOC_COMPONENT_ROOT, hostConfidentialLocalName))
+
+        remoteSystem.cleanup()
+        loggingscan.info('Handler %s has gracefully ended' % HANDLER_NAME)
+        
+    except Exception, e:
+        loggingscan.error(HANDLER_NAME+' cleanup error: '+str(e).encode(sys.stdout.encoding))
+
+        
+    return rawResults
 
 
 
 # Uses scan results to build the "Result" row in the database
 # If analysis has failed for some reason, decrements priority and retries count
 #
-def analyse(resultats_scan, tache):
+def analyzeResults(scanResults, task):
 
-    logginghashscan.info('Begin hash analysis for host %s' % tache.ip)
+    loggingscan.info('Begin hash analysis for host %s' % task.ip)
     smbreachable = True
 
     # Scan not completed
-    if resultats_scan is None:
-        tache.retries_left_hash -= 1
+    if scanResults is None :
+        task.retries_left_hash -= 1
 
         # Still got some retries left
-        if tache.retries_left_hash > 0:
-            tache.hashscanned = False
-            tache.last_retry_hash = datetime.datetime.now()
-            tache.priority_hash -= 1
+        if task.retries_left_hash > 0:
+            task.hashscanned = False
+            task.last_retry_hash = datetime.datetime.now()
+            task.priority_hash -= 1
         else:
-            tache.hashscanned = True
+            task.hashscanned = True
 
         smbreachable = False
     else:
-        tache.hashscanned = True
+        task.hashscanned = True
 
-    tache.reserved_hash = False
+    task.reserved_hash = False
     session.commit()
 
-    r  = session.query(Result).filter_by(tache_id = tache.id).first()
+    r  = session.query(Result).filter_by(tache_id = task.id).first()
 
     # No result for now
     if r is None:
         r = Result(
                     smbreachable = smbreachable,
-                    tache_id=tache.id,
+                    tache_id=task.id,
                     )
     else:
         r.smbreachable = smbreachable
@@ -274,7 +280,7 @@ def analyse(resultats_scan, tache):
     # If scan has been completed, add the detections to the database
     if smbreachable:
 
-        for ioc_id, dic in resultats_scan.items():
+        for ioc_id, dic in scanResults.items():
             if dic['res']!='True':
                 continue
 
@@ -283,14 +289,23 @@ def analyse(resultats_scan, tache):
 
         session.commit()
 
-    logginghashscan.info('End hash analysis for host %s' % tache.ip)
+    loggingscan.info('End hash analysis for host %s' % task.ip)
 
+    
+def rollbackTask(task):
+    session.rollback()
+    if task is not None:
+        task.reserved_hash = False
+        task.retries_left_hash = max(0,task.retries_left_hash - 1)
+        task.last_retry_hash = datetime.datetime.now()
+        
+    session.commit()
+    
 
 # MAIN function launched by the scheduler
 # "batch" is used to scan only targets for a specific batch
-#
-def demarrer_scanner(hWaitStop=None, batch=None):
-    logginghashscan.info('Starting an Hash scanner instance: ' + threadname)
+def startScanner(hWaitStop=None, batch=None):
+    loggingscan.info('Starting a hash scanner instance : ' + threadname)
 
     print ''
     print '\tPlease log in to launch scan'
@@ -304,7 +319,7 @@ def demarrer_scanner(hWaitStop=None, batch=None):
 
     # No user or bad password
     if not u or hashPassword(password) != u.password:
-        logginghashscan.critical('Username or password incorrect, stopping the initialization, press a key...')
+        loggingscan.critical('Username or password incorrect, stopping the initialization, press a key...')
         raw_input()
         return
 
@@ -312,53 +327,52 @@ def demarrer_scanner(hWaitStop=None, batch=None):
     keyFromPassword = crypto.keyFromText(password, base64.b64decode(u.b64_kdf_salt))
     MASTER_KEY = crypto.decrypt(u.encrypted_master_key, keyFromPassword)
 
-    mk_cksum = session.query(GlobalConfig).filter_by(key = 'master_key_checksum').first()
+    masterKeyChecksum = session.query(GlobalConfig).filter_by(key = 'master_key_checksum').first()
 
     # No checksum in config ???
-    if not mk_cksum:
-        logginghashscan.critical('Database is broken, please create a new one, stopping the initialization...')
+    if not masterKeyChecksum:
+        loggingscan.critical('Database is broken, please create a new one, stopping the initialization...')
         del MASTER_KEY
         raw_input()
         return
 
     # Someone has been playing with the database !
-    if checksum(MASTER_KEY)!=mk_cksum.value:
-        logginghashscan.critical('MASTER_KEY may have been altered, stopping the initialization...')
+    if checksum(MASTER_KEY)!=masterKeyChecksum.value:
+        loggingscan.critical('MASTER_KEY may have been altered, stopping the initialization...')
         del MASTER_KEY
         raw_input()
         return
 
-    logginghashscan.info('Login successful !')
+    loggingscan.info('Login successful !')
     # INITIALIZATION
 
-    # TODO: initialise all IOCs in DB, then link them to CP
+    # TODO : initialise all IOCs in DB, then link them to CP
 
-    all_xmliocs = session.query(XMLIOC).order_by(XMLIOC.name.asc())
-    all_cp = session.query(ConfigurationProfile).order_by(ConfigurationProfile.name.asc())
+    allXmlIocs = session.query(XMLIOC).order_by(XMLIOC.name.asc())
+    allConfigurationProfiles = session.query(ConfigurationProfile).order_by(ConfigurationProfile.name.asc())
 
-    ioc_by_cp = {}
-    for cp in all_cp:
-        if cp.ioc_list == '':
-            logginghashscan.warning('No IOC defined for profile "%s"' % cp.name)
+    iocByConfigurationProfile = {}
+    for configurationProfile in allConfigurationProfiles:
+        if configurationProfile.ioc_list == '':
+            loggingscan.warning('No IOC defined for profile "%s"' % cp.name)
             continue
-            
-        ioc_by_cp[cp.id] = []
-        for e in cp.ioc_list.split(','):
-            ioc_by_cp[cp.id].append(int(e))
-            
-    tree_by_ioc = {}
 
+        iocByConfigurationProfile[configurationProfile.id] = []
+        for e in configurationProfile.ioc_list.split(','):
+            iocByConfigurationProfile[configurationProfile.id].append(int(e))
+
+    treeByIoc = {}
 
     # Retrieves evaluators for current mode
     FLAT_MODE = (IOC_MODE == 'flat')
     allowedElements = {}
-    evaluatorList = hash_modules.flatEvaluatorList if FLAT_MODE else hash_modules.logicEvaluatorList
-    
+    evaluatorList = scan_modules.flatEvaluatorList if FLAT_MODE else scan_modules.logicEvaluatorList
+
     for name, classname in evaluatorList.items():
         allowedElements[name] = classname.evalList
 
     # Parse XML Ioc into IOC trees according to what we can do
-    for xmlioc in all_xmliocs:
+    for xmlioc in allXmlIocs:
 
         content = base64.b64decode(xmlioc.xml_content)
         oip = openiocparser.OpenIOCParser(content, allowedElements, FLAT_MODE, fromString=True)
@@ -367,22 +381,22 @@ def demarrer_scanner(hWaitStop=None, batch=None):
 
         # Trees may be stripped from non valid elements
         if iocTree is not None:
-            tree_by_ioc[xmlioc.id] = {'name':xmlioc.name, 'tree':iocTree}
+            treeByIoc[xmlioc.id] = {'name':xmlioc.name, 'tree':iocTree}
 
     # Each configuration profile has a set of trees
-    tree_by_cp = {cpid: {i:tree_by_ioc[i] for i in ioclist} for (cpid, ioclist) in ioc_by_cp.items()}
+    tree_by_cp = {cpid: {i:treeByIoc[i] for i in ioclist} for (cpid, ioclist) in iocByConfigurationProfile.items()}
 
     halt = False
-    tache = None
+    task = None
     batchquery = None
 
     # Batch filtering
     if batch is not None:
-        logginghashscan.info('Filtering for batch "%s"' % batch)
+        loggingscan.info('Filtering for batch "%s"' % batch)
         batchquery = session.query(Batch).filter( Batch.name == batch).first()
 
         if batchquery is None:
-            logginghashscan.error('Unknown batch "%s" ...' % batch)
+            loggingscan.error('Unknown batch "%s" ...' % batch)
             halt = True
 
     # LAUNCH
@@ -393,59 +407,59 @@ def demarrer_scanner(hWaitStop=None, batch=None):
             # Get targets to be scanned
             # and that are not currently being scanned
             # or that don't have any retry left
-            queue = session.query(Task).filter_by(hashscanned=False, reserved_ioc=False, reserved_hash=False).filter(Task.retries_left_hash > 0)
+            taskQueue = session.query(Task).filter_by(hashscanned=False, reserved_ioc=False, reserved_hash=False).filter(Task.retries_left_hash > 0)
 
             # Batch filtering
             if batchquery is not None:
-                queue = queue.filter_by(batch_id = batchquery.id)
+                taskQueue = taskQueue.filter_by(batch_id = batchquery.id)
 
-            taille_queue = queue.count()
+            taskQueueSize = taskQueue.count()
 
             # Compute the time after which targets are still recovering from last scan
             # Gets target which last retry is NULL or before that time
-            limite_a_reessayer = datetime.datetime.now() - datetime.timedelta(0, SECONDES_ENTRE_TENTATIVES)
-            a_scanner = queue.filter(or_(Task.last_retry_hash <= limite_a_reessayer, Task.last_retry_hash == None))
-            taille_a_scanner = a_scanner.count()
+            retryLimit = datetime.datetime.now() - datetime.timedelta(0, MIN_RESCAN_INTERVAL)
+            taskScanList = taskQueue.filter(or_(Task.last_retry_hash <= retryLimit, Task.last_retry_hash == None))
+            taskScanListSize = taskScanList.count()
 
             # Reads this list
-            while taille_a_scanner > 0:
+            while taskScanListSize > 0:
 
                 # Max priority
-                priorite_max = a_scanner.order_by(Task.priority_hash.desc()).first().priority_hash
-                taches_priorite_max = a_scanner.filter(Task.priority_hash==priorite_max)
-                nbre_taches_priorite_max = taches_priorite_max.count()
-                if BASE_DE_DONNEES_QUEUE.startswith('sqlite'):
-                    tache = taches_priorite_max.order_by(func.random()).first()
+                maxPriority = taskScanList.order_by(Task.priority_hash.desc()).first().priority_hash
+                maxPriorityTasks = taskScanList.filter(Task.priority_hash==maxPriority)
+                nbre_maxPriorityTasks = maxPriorityTasks.count()
+                if CERTITUDE_DATABASE.startswith('sqlite'):
+                    task = maxPriorityTasks.order_by(func.random()).first()
                 else:
-                    tache = taches_priorite_max.order_by(func.newid()).first()
+                    task = maxPriorityTasks.order_by(func.newid()).first()
 
                 # Mutex on the task
-                tache.reserved_hash = True
-                tache.date_debut = datetime.datetime.now()
+                task.reserved_hash = True
+                task.date_debut = datetime.datetime.now()
                 session.commit()
 
-                logginghashscan.debug('===============================================================================')
-                logginghashscan.debug('Wake up, there is work to do !')
-                logginghashscan.info('Queue size: ' + str(taille_queue) + ', including ' + str(taille_a_scanner) + ' to scan, including ' + str(nbre_taches_priorite_max) + ' at top priority (' + str(priorite_max) + ')')
-                logginghashscan.debug('  --------------------------------')
-                logginghashscan.info('         Starting Hash Scan')
-                logginghashscan.info('        Target: ' + str(tache.ip))
-                logginghashscan.debug('  --------------------------------')
+                loggingscan.debug('===============================================================================')
+                loggingscan.debug('Wake up, there is work to do !')
+                loggingscan.info('taskQueue size : ' + str(taskQueueSize) + ', including ' + str(taskScanListSize) + ' to scan, including ' + str(nbre_maxPriorityTasks) + ' at top priority (' + str(maxPriority) + ')')
+                loggingscan.debug('  --------------------------------')
+                loggingscan.info('         Starting Hash scan')
+                loggingscan.info('        Target : ' + str(task.ip))
+                loggingscan.debug('  --------------------------------')
 
                 # Recover Windows Credential and Configuration Profile from Batch
-                batch = session.query(Batch).filter_by(id = tache.batch_id).first()
+                batch = session.query(Batch).filter_by(id = task.batch_id).first()
                 wc = session.query(WindowsCredential).filter_by(id = batch.windows_credential_id).first()
                 cp = session.query(ConfigurationProfile).filter_by(id = batch.configuration_profile_id).first()
 
                 if not wc:
-                    raise Exception('WindowsCredential %d does not exist' % tache.windows_credential_id)
+                    raise Exception('WindowsCredential %d does not exist' % task.windows_credential_id)
 
                 if not cp:
-                    raise Exception('ConfigurationProfile %d does not exist' % tache.configuration_profile_id)
+                    raise Exception('ConfigurationProfile %d does not exist' % task.configuration_profile_id)
 
                 # Decrypt password using MASTER_KEY and create target object
                 targetPassword = crypto.decrypt(wc.encrypted_password, MASTER_KEY)
-                targetObject = {'ip':       tache.ip,
+                targetObject = {'ip':       task.ip,
                                 'login':    wc.login,
                                 'password': targetPassword,
                                 'domain':   wc.domain,
@@ -453,40 +467,39 @@ def demarrer_scanner(hWaitStop=None, batch=None):
 
                 # If high confidentiality is enabled, create local directory if needed
                 if cp.host_confidential:
-                    logginghashscan.info('"High confidentiality" mode enabled')
+                    loggingscan.info('"High confidentiality" mode enabled')
                     testdir = os.path.join(IOC_COMPONENT_ROOT, IOC_CONFIDENTIAL_DIRECTORY)
                     if not os.path.isdir(testdir):
-                        logginghashscan.info('Creating confidential directory %s' % testdir)
+                        loggingscan.info('Creating confidential directory %s' % testdir)
                         os.makedirs(testdir)
 
                 # Let the scan begin
 
                 if cp.id in tree_by_cp.keys():
-                    
-                    try:
-                        resultats_scan = scan(targetObject, tree_by_cp[cp.id], cp.host_confidential)
-                    except remotecmd.ShutdownException:
-                        logginghashscan.warning('Shutdown exception: %s, %s' % (repr(e), str(e)))
-            
+                    scanResults = scanTarget(targetObject, tree_by_cp[cp.id], cp.host_confidential)
+
                 else:
-                    logginghashscan.warning('No IOC to scan (profile=%s)' % cp.name)
-                    resultats_scan = {}
+                    loggingscan.warning('No IOC to scan (profile=%s)' % cp.name)
+                    scanResults = {}
 
-                # Analyze the results
-                analyse(resultats_scan, tache)
+                if scanResults is not None:
+                    analyzeResults(scanResults, task)
+                    
+                else:
+                    rollbackTask(task)
 
-                # Update queue size
-                taille_a_scanner = a_scanner.count()
+                # Update taskQueue size
+                taskScanListSize = taskScanList.count()
 
                 if halt:
                     # Stop signal encountered
                     break
 
             if halt:
-                logginghashscan.info('Stopping Hash scanner: ' + threadname)
+                loggingscan.info('Stopping Hash scanner : ' + threadname)
                 break
-            logginghashscan.debug('(Hash scanner sleeping for ' + str(SLEEP) + ' seconds...)' \
-                + (' (' + str(taille_queue) + ' waiting)' if taille_queue > 0 else ''))
+            loggingscan.debug('(Hash scanner sleeping for ' + str(SLEEP) + ' seconds...)' \
+                + (' (' + str(taskQueueSize) + ' waiting)' if taskQueueSize > 0 else ''))
             time.sleep(SLEEP)
 
         except KeyboardInterrupt:
@@ -494,20 +507,14 @@ def demarrer_scanner(hWaitStop=None, batch=None):
 
 
         except Exception, e:
-        
+
             exc_type, exc_obj, exc_tb = sys.exc_info()
-            logginghashscan.error('Exception caught:')
+            loggingscan.error('Exception caught:')
             for line in traceback.format_exc(exc_tb).splitlines():
-                logginghashscan.error(line)
+                loggingscan.error(line)
 
             # Cancel changes and unreserve task
-            session.rollback()
-            if tache is not None:
-                tache.reserved_hash = False
-                tache.retries_left_hash = max(0,tache.retries_left_hash - 1)
-                tache.last_retry_hash = datetime.datetime.now()
-                
-            session.commit()
+            rollbackTask(task)
 
 
 if __name__ == '__main__':

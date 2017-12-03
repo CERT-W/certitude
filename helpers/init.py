@@ -27,7 +27,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from config import BASE_DE_DONNEES_QUEUE
+from config import CERTITUDE_DATABASE
 from results_models import Result, IOCDetection
 from queue_models import Task
 from misc_models import User, GlobalConfig, XMLIOC, ConfigurationProfile, WindowsCredential
@@ -38,7 +38,7 @@ import getpass
 import base64
 
 # CERTitude core
-engine = create_engine(BASE_DE_DONNEES_QUEUE, echo=False)
+engine = create_engine(CERTITUDE_DATABASE, echo=False)
 
 Result.metadata.create_all(engine)
 Task.metadata.create_all(engine)
@@ -52,7 +52,7 @@ YaraRule.metadata.create_all(engine)
 YaraDetection.metadata.create_all(engine)
 
 
-engine = create_engine(BASE_DE_DONNEES_QUEUE, echo=False)
+engine = create_engine(CERTITUDE_DATABASE, echo=False)
 session = sessionmaker(bind=engine)()
 
 print '[+] Generating Master Key...'

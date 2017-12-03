@@ -29,7 +29,7 @@ class Evaluator(template.EvaluatorInterface):
 
     evalList = ['pid', 'parentpid', 'UserSID', 'Username', 'name', 'path', 'HandleList/Handle/Type', 'HandleList/Handle/Name']
 
-    def __init__(self, logger, ioc, remoteCommand, wd, keepFiles, confidential, dirname):
-        template.EvaluatorInterface.__init__(self, logger, ioc, remoteCommand, wd, keepFiles, confidential, dirname)
+    def __init__(self, logger, ioc, remoteCommand, keepFiles, confidential, dirname):
+        template.EvaluatorInterface.__init__(self, logger, ioc, remoteCommand, keepFiles, confidential, dirname)
 
         self.setEvaluatorParams(evalList=Evaluator.evalList, name='process', command='collector getprocess')
