@@ -36,7 +36,7 @@ LOG_DIRECTORY = '_log'
 FORMAT_LOGS = '%(asctime)s %(name)-14s %(levelname)-8s %(message)s'
 
 
-# Listening
+# Network configuration
 LISTEN_ADDRESS = '127.0.0.1'
 LISTEN_PORT = 5000
 BOKEH_LISTEN_ADDRESS = '127.0.0.2'
