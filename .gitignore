@@ -1,23 +1,13 @@
-output_*.xml
-*.pyc
-_log/*.log
-*.db
-*.cer
-*.key
-*.crt
-*.ioc
-*.ioc-select
-ioc/
-yara/
-certs/
+# general things to ignore
+build/
+dist/
+*.egg-info/
+*.egg
+*.py[cod]
+__pycache__/
+*.so
+*~
 
-# VirtualEnv
-bin/
-include/
-lib/
-local/
-pip-selfcheck.json
-share/
-Scripts/
-Tcl/
-src/
+# due to using tox and pytest
+.tox
+.cache

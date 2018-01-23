@@ -1,0 +1,6 @@
+include certitude/README.md
+include certitude/LICENSE
+include certitude/_log/*
+include certitude/ssl/*
+include certitude/utils/*
+recursive-include certitude/components/ *.*

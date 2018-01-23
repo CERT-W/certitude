@@ -84,8 +84,8 @@ def genCSRFToken():
 
 
 CSRF_TOKEN_INDEX = '_csrft'
-STATIC_ENDPOINT = 'static'
-
+STATIC_ENDPOINT = os.path.join(os.path.dirname(__file__), 'static')
+TEMPLATES_FOLDER = os.path.join(os.path.dirname(__file__), 'templates')
 
 def getCSRFToken():
     if not CSRF_TOKEN_INDEX in session:
@@ -96,7 +96,7 @@ def getCSRFToken():
 
 ''' APPLICATION CONFIGURATION '''
 
-app = Flask(__name__, static_folder=STATIC_ENDPOINT)
+app = Flask(__name__, static_folder=STATIC_ENDPOINT, template_folder=TEMPLATES_FOLDER)
 app.secret_key = os.urandom(24)
 
 app.jinja_env.globals['csrf_token'] = getCSRFToken
@@ -136,13 +136,14 @@ bokeh_process = None
 # Preventing Flask from running Bokeh twice
 # source : https://stackoverflow.com/questions/9449101/how-to-stop-flask-from-initialising-twice-in-debug-mode
 if not DEBUG or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-    bokeh_process = subprocess.Popen([
+    cmd = [
         'bokeh', 
-        'serve', 'crossbokeh.py', 
+        'serve', "%s" % os.path.abspath(os.path.join(__file__, '../../../crossbokeh.py')), 
         '--address', BOKEH_LISTEN_ADDRESS, 
         '--port', str(BOKEH_LISTEN_PORT),
         '--allow-websocket-origin', '%s:%d' % (BOKEH_LISTEN_ADDRESS, BOKEH_LISTEN_PORT),
-    ], stdout=subprocess.PIPE)
+    ]
+    bokeh_process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 
 @atexit.register
 def kill_server():

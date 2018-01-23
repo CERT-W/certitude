@@ -44,15 +44,15 @@ BOKEH_LISTEN_PORT = 8000
 
 # SSL configuration
 USE_SSL = False
-SSL_KEY_FILE = os.path.join('ssl','server.pem.key')
-SSL_CERT_FILE = os.path.join('ssl','server.pem.cer')
+SSL_KEY_FILE = os.path.join(os.path.dirname(__file__), 'ssl', 'server.pem.key')
+SSL_CERT_FILE = os.path.join(os.path.dirname(__file__), 'ssl', 'server.pem.cer')
 
 
 INTERFACE_HASH_SALT = '' # nocommit
 SLEEP = 5 # second interval between database poll
 MIN_SUBMIT_INTERVAL = 300 # min second interval between two submissions of same IP address
 MIN_RESCAN_INTERVAL = 300 # min second interval between two consecutive scans on same IP address
-CERTITUDE_DATABASE = "sqlite:///data.db"
+CERTITUDE_DATABASE = "sqlite:///%s" % os.path.join(os.path.dirname(__file__), 'data.db') 
 
 # IOC Scanner
 # ===========
