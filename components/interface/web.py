@@ -47,7 +47,7 @@ except:
 
 from flask import Flask, render_template, request, session, redirect, url_for, Response, abort, escape
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, scoped_session
 import netaddr
 
 from config import LISTEN_ADDRESS, LISTEN_PORT, BOKEH_LISTEN_ADDRESS, BOKEH_LISTEN_PORT
@@ -76,7 +76,7 @@ loggingserver = logging.getLogger('api')
 
 # Create database
 engine = create_engine(CERTITUDE_DATABASE, echo=False)
-dbsession = sessionmaker(bind=engine)()
+dbsession = scoped_session(sessionmaker(bind=engine))
 
 
 def genCSRFToken():
@@ -137,9 +137,9 @@ bokeh_process = None
 # source : https://stackoverflow.com/questions/9449101/how-to-stop-flask-from-initialising-twice-in-debug-mode
 if not DEBUG or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
     bokeh_process = subprocess.Popen([
-        'bokeh', 
-        'serve', 'crossbokeh.py', 
-        '--address', BOKEH_LISTEN_ADDRESS, 
+        'bokeh',
+        'serve', 'crossbokeh.py',
+        '--address', BOKEH_LISTEN_ADDRESS,
         '--port', str(BOKEH_LISTEN_PORT),
         '--allow-websocket-origin', '%s:%d' % (BOKEH_LISTEN_ADDRESS, BOKEH_LISTEN_PORT),
     ], stdout=subprocess.PIPE)
@@ -403,15 +403,15 @@ def xmliocDelete(xmliocid):
         return redirect(app.jinja_env.globals['url_for']('config'))
 
     cps = dbsession.query(ConfigurationProfile).all()
-    
+
     for cp in cps:
         ioclist = map(int, cp.ioc_list.split(','))
         if xi.id in ioclist:
             ioclist.remove(xi.id)
-            
+
         cp.ioc_list = ','.join(map(str, ioclist))
         dbsession.add(cp)
-        
+
     dbsession.delete(xi)
     dbsession.commit()
 
@@ -711,7 +711,7 @@ def hostjson(hostid):
     for iocd in ioc_detections:
         if iocd.indicator_data is None:
             ioc_data = []
-            
+
         else:
             jdata = json.loads(iocd.indicator_data)
 
@@ -719,7 +719,7 @@ def hostjson(hostid):
                 ioc_data = [str(escape(d)) for d in jdata]
             else:
                 ioc_data = []
-            
+
         guids[iocd.xmlioc_id][iocd.indicator_id] = ioc_data
         # guids[iocd.xmlioc_id][iocd.indicator_id] = str(escape(iocd.indicator_data))
 
@@ -1171,15 +1171,15 @@ def yaraDelete(yaraid):
         return redirect(app.jinja_env.globals['url_for']('config'))
 
     cps = dbsession.query(ConfigurationProfile).all()
-    
+
     for cp in cps:
         yaralist = map(int, cp.yara_list.split(','))
         if yi.id in ioclist:
             ioclist.remove(yi.id)
-            
+
         cp.yaralist_list = ','.join(map(str, yaralist))
         dbsession.add(cp)
-        
+
     dbsession.delete(yi)
     dbsession.commit()
 
